@@ -25,12 +25,18 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/replay-claude.png" alt="midflight replay of a real Claude Code session" width="880">
+  <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109MB Codex session: 14,905 steps, 30,736 log lines, opened in under half a second" width="880">
 </p>
+
+<p align="center"><sub>A real Codex session from this machine &mdash; 109 MB of raw JSONL, 14,905 parsed steps &mdash; opened in under half a second. The code in the picture is the actual session log, not a mock.</sub></p>
 
 ---
 
 ## See it move
+
+<p align="center">
+  <img src="docs/images/replay-claude.png" alt="midflight replay of a real Claude Code session" width="880">
+</p>
 
 A real Claude Code session from this machine — **32 MB of raw JSONL, 3,111 parsed
 steps, 10 first-hand compaction events** — played back in 24 seconds. No mock data,
