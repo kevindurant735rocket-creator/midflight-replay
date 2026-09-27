@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { redact, REDACT_RULE_NAMES } from '../src/redact.js';
-import { thin, isProtected, capStep, NEVER_DROP } from '../src/compact.js';
+import { thin, thinBanner, isProtected, capStep, NEVER_DROP } from '../src/compact.js';
 import { isEditTool, diffFromArgs } from '../src/diff.js';
 import { computeCoverage, isShellTool, looksLikeMutation, VERDICT_LABEL } from '../src/coverage.js';
 import { assertPasteSafe, buildPaste, PASTE_ALLOWED_TAGS } from '../src/paste.js';
+import { buildContextTrack, projectContextTrack } from '../src/context.js';
 import { buildReport } from '../src/report.js';
 import { parseSession, detectAdapter } from '../src/adapters/index.js';
 import type { ReplayStep, Session } from '../src/types.js';
@@ -78,6 +79,35 @@ describe('W3 thinning policy (never silently drop)', () => {
     expect(isProtected({ kind: 'note', ts: 1, level: 'warn', text: 'x' })).toBe(true);
     expect(isProtected({ kind: 'note', ts: 1, level: 'error', text: 'x' })).toBe(true);
     expect(isProtected({ kind: 'note', ts: 1, level: 'info', text: 'x' })).toBe(false);
+  });
+  it('still samples prose when protected rows alone exceed the budget (G4-3)', () => {
+    // The measured case: 110 MB Codex session, 3,689 tool calls + 22 compactions = 3,711
+    // protected vs a 3,000 default. The old budget floored at 0 and dropped every
+    // user/assistant/reasoning step in the file.
+    // 11,000 prose steps against a 300-slot reserve, so the drop path is exercised too.
+    const steps: ReplayStep[] = [
+      ...Array.from({ length: 6000 }, (_, i) => ({ kind: 'user' as const, ts: i * 2, text: `ask ${i}` })),
+      ...Array.from({ length: 5000 }, (_, i) => ({ kind: 'assistant' as const, ts: i * 2 + 1, text: `answer ${i}` })),
+      ...Array.from({ length: 3711 }, (_, i) => tc('exec_command', `{"cmd":"run ${i}"}`)),
+    ];
+    const r = thin(steps, { maxSteps: 3000 });
+    expect(r.truncated).toBe(true);
+    expect(r.steps.filter((s) => s.kind === 'tool_call')).toHaveLength(3711);
+    expect(r.steps.some((s) => s.kind === 'user' || s.kind === 'assistant')).toBe(true);
+    // ...and the banner names the survivors' siblings by kind, not just the count.
+    expect(r.droppedByKind.user).toBeGreaterThan(5000);
+    expect(r.droppedByKind.assistant).toBeGreaterThan(4000);
+    expect(r.kept).toBe(3711 + r.steps.filter((s) => s.kind !== 'tool_call').length);
+    expect(r.droppedByKind.tool_call).toBeUndefined();
+    const b = thinBanner(r.kept, r.total, r.droppedByKind);
+    expect(b).toContain('user');
+    expect(b).toContain('assistant');
+    expect(b).toContain('--max-steps');
+    expect(b).not.toContain('tool_call');
+  });
+  it('drops nothing and reports no breakdown when the session fits', () => {
+    const steps: ReplayStep[] = Array.from({ length: 5 }, (_, i) => ({ kind: 'user', ts: i, text: `m${i}` }));
+    expect(thin(steps, { maxSteps: 10 }).droppedByKind).toEqual({});
   });
   it('leaves a small session untouched and reports no truncation', () => {
     const steps: ReplayStep[] = Array.from({ length: 5 }, (_, i) => ({ kind: 'user', ts: i, text: `m${i}` }));
@@ -279,5 +309,104 @@ describe('AC-15 unclassified steps are disclosed, not hidden', () => {
   it('reports zero when every step was classified', () => {
     const r = buildReport(sess([tc('shell', '{"command":"ls"}')]));
     expect(r.html).toContain('"unknownCount":0');
+  });
+});
+
+describe('context track survives thinning (G4-4)', () => {
+  // 40 assistant steps of 100 chars + 4 tool_calls, kept at 8 — the kept list holds
+  // 8 tool_calls and ~0 prose, so building the curve from the kept steps loses all mass.
+  const mk = (): ReplayStep[] => [
+    ...Array.from({ length: 40 }, (_, i): ReplayStep => ({
+      kind: 'assistant', t: i, text: 'x'.repeat(100),
+    })),
+    ...Array.from({ length: 4 }, (_, i): ReplayStep => ({
+      kind: 'tool_call', t: 40 + i, tool: 'shell', args: 'ls', rawArgs: 'ls',
+    })),
+  ];
+
+  it('thin() reports the original index of every kept step', () => {
+    const t = thin(mk(), { maxSteps: 8 });
+    expect(t.keptIdx.length).toBe(t.kept);
+    for (const i of t.keptIdx) expect(i).toBeGreaterThanOrEqual(0);
+    // strictly increasing: the projection assumes timeline order
+    for (let k = 1; k < t.keptIdx.length; k++) expect(t.keptIdx[k]).toBeGreaterThan(t.keptIdx[k - 1]);
+  });
+
+  it('identity projection returns the track unchanged', () => {
+    const steps = mk();
+    const full = buildContextTrack(steps);
+    const id = steps.map((_, i) => i);
+    expect(projectContextTrack(full, id)).toBe(full);
+  });
+
+  it('the projected curve keeps the true mass of the thinned-away steps', () => {
+    const steps = mk();
+    const full = buildContextTrack(steps);
+    const t = thin(steps, { maxSteps: 8 });
+    const thinnedBuilt = buildContextTrack(t.steps);
+    const projected = projectContextTrack(full, t.keptIdx);
+    const total = (c: number[]): number => c.reduce((a, b) => a + b, 0);
+    // every displayed point must equal the true cumulative mass at its original position
+    t.keptIdx.forEach((orig, j) => {
+      expect(projected.cumulative[j]).toEqual(full.cumulative[orig]);
+    });
+    // and the curve must not have lost the thinned prose
+    expect(total(projected.cumulative[projected.cumulative.length - 1]))
+      .toBeGreaterThan(total(thinnedBuilt.cumulative[thinnedBuilt.cumulative.length - 1]));
+  });
+
+  it('firstStep is re-expressed as a kept position, and -1 stays -1', () => {
+    const steps: ReplayStep[] = [
+      ...Array.from({ length: 20 }, (_, i): ReplayStep => ({ kind: 'assistant', t: i, text: 'a' })),
+      ...Array.from({ length: 4 }, (_, i): ReplayStep => ({ kind: 'reasoning', t: 20 + i, summary: 'r' })),
+    ];
+    const full = buildContextTrack(steps);
+    const t = thin(steps, { maxSteps: 6 }); // reasoning rows are the protected ones here
+    const projected = projectContextTrack(full, t.keptIdx);
+    const origOf = t.keptIdx[projected.firstStep[1]];
+    expect(origOf).toBeGreaterThanOrEqual(full.firstStep[1]);
+    expect(projected.firstStep[2]).toBe(-1); // tool_output never appeared
+  });
+});
+
+describe('Claude Code compaction is a first-hand event, not chrome (G4-5)', () => {
+  it('turns compact_boundary into a compaction step and leaves other system records alone', async () => {
+    const s = await parseSession('fixtures/claude-compact.jsonl');
+    expect(s.unknownCount).toBe(0);
+    const comps = s.steps.filter((x) => x.kind === 'compaction') as Extract<ReplayStep, { kind: 'compaction' }>[];
+    expect(comps.length).toBe(1);
+    expect(comps[0].contextBefore).toBe(79656);
+    expect(comps[0].summary).toContain('manual');
+    expect(comps[0].summary).toContain('79,656');
+    expect(comps[0].summary).toContain('19,748');
+    expect(comps[0].summary).toContain('32.8s');
+  });
+
+  it('the report then reports a first-hand compaction instead of claiming there was none', () => {
+    const s = sess([
+      { kind: 'user', ts: 0, text: 'a'.repeat(500) },
+      { kind: 'compaction', ts: 1000, summary: '宿主压缩（auto 触发）', contextBefore: 79656 },
+      { kind: 'user', ts: 2000, text: 'b'.repeat(100) },
+    ]);
+    const r = buildReport(s);
+    expect(r.html).toContain('"hasFirstHandCompaction":true');
+    // tokens must never be labelled as characters
+    expect(r.html).toContain('宿主上报压缩前');
+    expect(r.html).not.toMatch(/压缩前上下文 <b>[\d,]*<\/b> 字符/);
+  });
+});
+
+describe('session chrome is not noise, and the title is worth keeping (G4-6)', () => {
+  it('reads ai-title into meta and emits no step for the chrome records', async () => {
+    const s = await parseSession('fixtures/claude-compact.jsonl');
+    expect(s.unknownCount).toBe(0);
+    expect(s.steps.some((x) => x.kind === 'unknown')).toBe(false);
+  });
+  it('a title shows up in the report header', () => {
+    const s = sess([tc('shell', '{"command":"ls"}')]);
+    s.meta.title = '任务监控系统改进';
+    const r = buildReport(s);
+    expect(r.html).toContain('"title":"任务监控系统改进"');
+    expect(r.html).toMatch(/\["标题",m\.title\]/);
   });
 });

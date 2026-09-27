@@ -1,6 +1,6 @@
 import type { ReplayStep, Session } from './types.js';
 import { thin, thinBanner, type ThinOptions } from './compact.js';
-import { buildContextTrack, CATEGORIES, CATEGORY_LABEL } from './context.js';
+import { buildContextTrack, projectContextTrack, CATEGORIES, CATEGORY_LABEL } from './context.js';
 import { computeCoverage, VERDICT_LABEL } from './coverage.js';
 import { isEditTool, diffFromArgs } from './diff.js';
 
@@ -26,7 +26,9 @@ const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/<\//g, 
 export function buildReport(session: Session, opts: ReportOptions = {}): ReportResult {
   const maxBytes = opts.maxBytes ?? 5 * 1024 * 1024;
   const t = thin(session.steps, opts);
-  const ctx = buildContextTrack(t.steps);
+  // Measure context on the FULL session, then project onto the kept timeline. Building it
+  // from t.steps would let the thinned-away usage/tool_output rows flatten the curve.
+  const ctx = projectContextTrack(buildContextTrack(session.steps), t.keptIdx);
   const coverage = computeCoverage(t.steps, session.meta.agent);
 
   // pre-resolve which steps are edits, so the browser only diffs what it must
@@ -41,7 +43,14 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
       unexplainedDrops: ctx.unexplainedDrops,
     },
     coverage,
-    thin: { kept: t.kept, total: t.total, truncated: t.truncated, banner: t.truncated ? thinBanner(t.kept, t.total) : '' },
+    thin: {
+      kept: t.kept,
+      total: t.total,
+      truncated: t.truncated,
+      // Named so the banner can say which kinds are gone, not just how many steps.
+      droppedByKind: t.droppedByKind,
+      banner: t.truncated ? thinBanner(t.kept, t.total, t.droppedByKind) : '',
+    },
     // Steps the adapter could not classify. These are *not* dropped — they are
     // rendered and scrubbable — but a reader seeing them labelled "unknown"
     // reasonably assumes the parser broke, so the header says what they are.
@@ -189,11 +198,13 @@ function drawAxes(){
   s1.addEventListener("click",e=>{const t=e.target.getAttribute("data-i"); if(t!==null) select(+t);});
   wrap.appendChild(s1);
 
-  const l2 = el("div","axlabel"); l2.style.marginTop="10px";
+  const l2 = el("div","axlabel"); l2.style.marginTop="10px"; l2.style.display="block"; l2.style.lineHeight="1.7";
   const cg = D.ctx;
   l2.innerHTML = "<span>副轴 · 上下文构成（字符质量，非精确 token 归因）</span><span>"+
     (cg.hasFirstHandCompaction ? "⇣ 第一手压缩事件 "+cg.evaporated.filter(x=>x>0).length+" 次" : "未观测到压缩事件")+
-    " · 点击色块跳到该类内容首次进入上下文的一步</span>";
+    " · 点击色块跳到该类内容首次进入上下文的一步"+
+    (D.thin&&D.thin.truncated ? " · 已抽稀会话：曲线在<b>全量</b>步上测量后按显示点采样，不受丢弃影响" : "")+
+    "</span>";
   wrap.appendChild(l2);
   const s2 = document.createElementNS("http://www.w3.org/2000/svg","svg");
   s2.setAttribute("viewBox","0 0 1000 34"); s2.setAttribute("preserveAspectRatio","none"); s2.setAttribute("height","34");
@@ -282,7 +293,7 @@ function detail(){
   if(s.ts-S[0].ts>=0) h += ' · 相对 <b>+'+fmtDur(s.ts-S[0].ts)+'</b>';
   if(k==="usage") h += ' · 上下文占用 <b>'+(s.contextWindow? (100*s.input/s.contextWindow).toFixed(1)+"% ("+kb(s.input)+"/"+kb(s.contextWindow)+")" : kb(s.input))+'</b>';
   h += '</div>';
-  if(s.kind==="reasoning"||s.kind==="compaction"||s.kind==="user"||s.kind==="assistant") h += "<pre>"+esc(s.text||s.summary)+"</pre>";
+  if(s.kind==="reasoning"||s.kind==="user"||s.kind==="assistant") h += "<pre>"+esc(s.text||s.summary)+"</pre>";
   if(s.kind==="tool_call"){
     h += '<div class="kv">工具 <b>'+esc(s.name)+'</b> · call_id <b>'+esc(s.callId)+'</b></div>';
     const d = diffFor(s);
@@ -297,8 +308,10 @@ function detail(){
   if(s.kind==="tool_output") h += '<div class="kv">'+(s.truncated?'<span class="badge warn">已截断</span> ':'')+'</div><pre>'+esc(s.output)+"</pre>";
   if(s.kind==="usage") h += '<div class="kv">输入 <b>'+kb(s.input)+'</b>（缓存 '+kb(s.cachedInput)+'） · 输出 <b>'+kb(s.output)+'</b> · 推理 <b>'+kb(s.reasoning)+
     '</b> · 本次合计 <b>'+kb(s.total)+'</b>'+(s.threadTotal!=null?' · 线程累计 <b>'+kb(s.threadTotal)+'</b>':'')+'</div>';
-  if(s.kind==="compaction") h += '<div class="kv"><span class="badge warn">⇣ 上下文压缩</span> 压缩前上下文 <b>'+kb(s.contextBefore||0)+
-    '</b> 字符 · 被丢弃 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符</div>';
+  if(s.kind==="compaction") h += '<div class="kv"><span class="badge warn">⇣ 上下文压缩</span>'+
+    (s.contextBefore!=null ? ' 宿主上报压缩前 <b>'+kb(s.contextBefore)+'</b> token' : ' 宿主未上报压缩前 token 数')+
+    ' · 本次蒸发 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符（按本报告字符口径）</div>'+
+    (s.summary? '<pre>'+esc(s.summary)+'</pre>' : '');
   if(s.kind==="note") h += '<div class="'+(s.level==="info"?"kv":(s.level==="warn"?"kv warn":"kv err"))+'">'+esc(s.text)+"</div>";
   box.innerHTML=h; return box;
 }
@@ -334,7 +347,7 @@ document.addEventListener("keydown",e=>{
 function header(){
   const m=D.meta, c=D.coverage;
   const h=el("header");
-  const metas=[["会话",m.sessionId],["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
+  const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
     ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow):"—"],
     ["来源",D.sourceLabel]];
   let hh='<h1>midflight <small>agent 会话回放 · 事后法证</small></h1><div class="meta">';

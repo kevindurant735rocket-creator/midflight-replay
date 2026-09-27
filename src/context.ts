@@ -80,3 +80,39 @@ export function buildContextTrack(steps: ReplayStep[]): ContextTrack {
 
   return { cumulative, firstStep, added, evaporated, hasFirstHandCompaction, unexplainedDrops };
 }
+
+/**
+ * Project a track measured on the full session onto the thinned timeline.
+ *
+ * Why this exists: thinning (compact.ts) may drop thousands of rows, and on a Codex
+ * session the dropped rows are dominated by `usage` and `tool_output` — exactly the
+ * rows that carry context mass. Building the curve from the thinned list therefore
+ * understates mass by an order of magnitude and flattens the secondary axis into a
+ * lie. So the track is measured on every step, then sampled: each displayed step keeps
+ * the *true* cumulative mass at its original position. Invariant: projecting with an
+ * identity index list must return the input unchanged.
+ *
+ * `unexplainedDrops` and `hasFirstHandCompaction` are whole-session facts and are
+ * carried through as-is rather than resampled.
+ */
+export function projectContextTrack(track: ContextTrack, keptIdx: number[]): ContextTrack {
+  if (keptIdx.length === track.cumulative.length) return track;
+  const cumulative = keptIdx.map((i) => track.cumulative[i] ?? [0, 0, 0, 0]);
+  const evaporated = keptIdx.map((i) => track.evaporated[i] ?? 0);
+  const added = keptIdx.map((i) => track.added[i] ?? [0, 0, 0, 0]);
+  // firstStep: original index of the first contributing step, re-expressed as the
+  // position of the first *kept* step at or after it (-1 if none survived).
+  const firstStep = track.firstStep.map((orig) => {
+    if (orig < 0) return -1;
+    const at = keptIdx.findIndex((i) => i >= orig);
+    return at;
+  });
+  return {
+    cumulative,
+    firstStep,
+    added,
+    evaporated,
+    hasFirstHandCompaction: track.hasFirstHandCompaction,
+    unexplainedDrops: track.unexplainedDrops,
+  };
+}

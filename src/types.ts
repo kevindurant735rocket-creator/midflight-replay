@@ -22,6 +22,8 @@ export type ReplayStep =
       threadTotal?: number;
     }
   /** first-hand compaction event emitted by the host (not inferred from token drops) */
+  /** contextBefore is the HOST-reported pre-compaction size in TOKENS, not characters.
+   *  Characters only exist in the report's own measured curve (ctx.evaporated). */
   | { kind: 'compaction'; ts: number; summary: string; turnId?: string; contextBefore?: number }
   | { kind: 'file_event'; ts: number; path: string; op: 'create' | 'modify' | 'delete'; tool: string; text?: string }
   | { kind: 'note'; ts: number; level: 'info' | 'warn' | 'error'; text: string }
@@ -32,6 +34,8 @@ export type StepKind = ReplayStep['kind'];
 export interface SessionMeta {
   sessionId: string;
   agent: string;
+  /** human title the host assigned to the conversation, when it logs one */
+  title?: string;
   cliVersion?: string;
   cwd?: string;
   model?: string;

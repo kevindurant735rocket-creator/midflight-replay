@@ -159,7 +159,7 @@ export function buildPaste(session: Session, opts: PasteOptions = {}): PasteResu
     name: '压缩事件',
     priority: 3,
     html: `<details><summary>上下文压缩事件（${comps.length}）</summary>${table(
-      ['步', '时间', '压缩前', '丢弃'],
+      ['步', '时间', '压缩前 token', '本次蒸发字符'],
       comps.slice(0, 30).map((c) =>
         row([
           `#${c.i + 1}`,

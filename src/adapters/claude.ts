@@ -161,11 +161,59 @@ export async function parseClaude(
           }
           break;
         }
+        case 'system': {
+          // Claude Code writes compaction as a first-hand host event:
+          //   {type:"system", subtype:"compact_boundary", compactMetadata:{trigger,preTokens,
+          //    postTokens,cumulativeDroppedTokens,durationMs,...}, content:"Conversation compacted"}
+          // Measured on a real 32MB session: 10 such records. Before this case existed the
+          // adapter swallowed them as generic chrome and the report honestly-but-wrongly
+          // printed "未观测到压缩事件" for a session that compressed ten times.
+          if (String(obj.subtype ?? '') !== 'compact_boundary') break;
+          const cm = (obj.compactMetadata ?? {}) as Record<string, unknown>;
+          const n = (k: string): number | undefined => num(cm[k]);
+          const pre = n('preTokens');
+          const post = n('postTokens');
+          const parts: string[] = [];
+          const trig = typeof cm.trigger === 'string' ? cm.trigger : null;
+          parts.push(trig ? `宿主压缩（${trig} 触发）` : '宿主压缩');
+          if (pre != null) parts.push(`压缩前 ${pre.toLocaleString('en-US')} token`);
+          if (post != null) parts.push(`压缩后 ${post.toLocaleString('en-US')} token`);
+          if (pre != null && post != null) {
+            parts.push(`本次丢弃 ${Math.max(0, pre - post).toLocaleString('en-US')} token`);
+          }
+          const cum = n('cumulativeDroppedTokens');
+          if (cum != null) parts.push(`累计丢弃 ${cum.toLocaleString('en-US')} token`);
+          const dur = n('durationMs');
+          if (dur != null) parts.push(`耗时 ${(dur / 1000).toFixed(1)}s`);
+          steps.push({
+            kind: 'compaction',
+            ts,
+            summary: redactOn(parts.join(' · ')),
+            ...(pre != null ? { contextBefore: pre } : {}),
+          });
+          break;
+        }
+        // Session chrome, measured on a real 32MB file: ai-title 254 + agent-name 254 +
+        // file-history-delta 13 records. None is a replayable step — but ai-title/agent-name
+        // carry the conversation title, which the report header can show, so they are read
+        // for metadata instead of being rendered as "unknown". Before this, 404 of 3,000
+        // displayed steps (13%) were this chrome mislabelled as unclassified.
+        case 'ai-title':
+        case 'agent-name': {
+          const t = obj.aiTitle ?? obj.agentName;
+          if (!meta.title && typeof t === 'string' && t.trim()) meta.title = t.trim();
+          break;
+        }
+        // file-history-delta points at a before-image backup under
+        // ~/.claude/file-history/<session>/. Verified on this session: all 12 distinct
+        // trackingPaths are already covered by an Edit/Write tool_use whose args carry
+        // old_string, so reading the backup would add no reversible diff that is not
+        // already there. It is therefore chrome, not a step. (See docs/KNOWN-GAPS.md.)
+        case 'file-history-delta':
         case 'mode':
         case 'permission-mode':
         case 'last-prompt':
         case 'atis-latch':
-        case 'system':
         case 'queue-operation':
         case 'attachment':
           break; // known chrome, carries no replayable step

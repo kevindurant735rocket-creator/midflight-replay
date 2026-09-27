@@ -1,0 +1,8 @@
+{"type":"user","timestamp":"2026-09-17T14:06:35.513Z","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35","cwd":"/tmp/demo","message":{"role":"user","content":[{"type":"text","text":"先把目录列出来"}]}}
+{"type":"assistant","timestamp":"2026-09-17T14:06:40.000Z","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35","message":{"role":"assistant","content":[{"type":"thinking","thinking":"先看目录"},{"type":"text","text":"好的"}]}}
+{"type":"system","subtype":"compact_boundary","timestamp":"2026-09-17T14:10:00.000Z","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35","content":"Conversation compacted","compactMetadata":{"trigger":"manual","preTokens":79656,"postTokens":19748,"cumulativeDroppedTokens":211056,"durationMs":32756,"preservedSegment":{"headUuid":"e6597c3e-c77d-4bb3-b08e-1d6b70cc43fc"}}}
+{"type":"assistant","timestamp":"2026-09-17T14:10:02.000Z","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35","message":{"role":"assistant","content":[{"type":"text","text":"压缩后继续"}]}}
+{"type":"system","subtype":"other_system_event","timestamp":"2026-09-17T14:10:03.000Z","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35","content":"not a compaction"}
+{"type":"ai-title","aiTitle":"任务监控系统改进","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35"}
+{"type":"agent-name","agentName":"任务监控系统改进","sessionId":"c3ed4d1e-3d75-408d-9069-3ce5f63cea35"}
+{"type":"file-history-delta","messageId":"5df4be4d-f27c-4ee6-b005-a0f22cd6c12c","trackingPath":"demo/setup.py","backup":{"backupFileName":"930b91760e629bd9@v1","version":1,"backupTime":"2026-09-17T14:09:00.000Z"},"timestamp":"2026-09-17T14:09:00.000Z"}
