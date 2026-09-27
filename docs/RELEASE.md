@@ -50,7 +50,7 @@ done
 cd ~/Desktop/项目/agent-replay
 npm ci
 npm run typecheck        # exit 0
-npx vitest run           # 61 passed
+npx vitest run           # 63 passed
 npm run build            # exit 0
 node dist/cli.js doctor fixtures/codex-mini.jsonl --json      # exit 0
 node dist/cli.js doctor fixtures/codex-truncated.jsonl --json  # exit 1  (negative test)

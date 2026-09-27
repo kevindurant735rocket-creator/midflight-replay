@@ -95,6 +95,45 @@ describe("the Action's session-path resolution", () => {
     expect(html.length).toBeLessThanOrEqual(64 * 1024);
   });
 
+  it('resolves the default `session: auto` from a `.agent-sessions/` dir', () => {
+    const sessions = join(workspace, '.agent-sessions');
+    mkdirSync(sessions, { recursive: true });
+    copyFileSync(join(REPO, 'fixtures/claude-mini.jsonl'), join(sessions, 'a.jsonl'));
+    // newer mtime wins: `ls -1t | head -1` must pick b.jsonl
+    const newer = join(sessions, 'b.jsonl');
+    copyFileSync(join(REPO, 'fixtures/codex-mini.jsonl'), newer);
+    const out2 = join(workspace, 'github_output2');
+    writeFileSync(out2, '');
+    execFileSync('bash', ['-c', stepBody('Resolve the session log')], {
+      cwd: workspace,
+      env: { ...process.env, SESSION: 'auto', DIR: '.agent-sessions', GITHUB_OUTPUT: out2 },
+      stdio: 'pipe',
+    });
+    const o: Record<string, string> = {};
+    for (const line of readFileSync(out2, 'utf8').split('\n')) {
+      const eq = line.indexOf('=');
+      if (eq > 0) o[line.slice(0, eq)] = line.slice(eq + 1);
+    }
+    expect(o.label).toBe('.agent-sessions/b.jsonl');
+    expect(o.path.startsWith('/')).toBe(true);
+  });
+
+  it('fails loudly when `session: auto` finds nothing', () => {
+    const out3 = join(workspace, 'github_output3');
+    writeFileSync(out3, '');
+    let code = 0;
+    try {
+      execFileSync('bash', ['-c', stepBody('Resolve the session log')], {
+        cwd: workspace,
+        env: { ...process.env, SESSION: 'auto', DIR: 'no-such-dir', GITHUB_OUTPUT: out3 },
+        stdio: 'pipe',
+      });
+    } catch (e) {
+      code = (e as { status: number | null }).status ?? -1;
+    }
+    expect(code).toBe(1);
+  });
+
   it('credits the label, not the runner path, in the comment caption', () => {
     const digest = stepBody('Build the digest');
     expect(digest).toContain('$LABEL');
