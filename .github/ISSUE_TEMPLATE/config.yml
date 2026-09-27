@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Honest coverage / roadmap discussion
+    url: https://github.com/OWNER/agent-replay/discussions
+    about: Talk about what a session log can and cannot reconstruct, and what to build next.

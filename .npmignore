@@ -1,0 +1,9 @@
+src/
+test/
+scripts/
+docs/
+fixtures/
+.github/
+tsconfig.json
+*.md
+!dist/

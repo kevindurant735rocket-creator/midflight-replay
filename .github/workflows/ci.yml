@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: install dev deps
+        run: npm ci
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: unit tests
+        run: npm test
+
+      - name: build
+        run: npm run build
+
+      - name: self-check on fixtures (no network, no workspace writes)
+        run: |
+          node dist/cli.js replay fixtures/codex-mini.jsonl --out /tmp/check.html
+          node dist/cli.js replay fixtures/claude-mini.jsonl --out /tmp/check2.html
+          node dist/cli.js doctor fixtures/codex-mini.jsonl --json
+          # a truncated session must be rejected with a non-zero exit code
+          if node dist/cli.js doctor fixtures/codex-truncated.jsonl --json; then
+            echo "FAIL: truncated session was accepted"
+            exit 1
+          fi
+          echo "truncated session correctly rejected with non-zero exit"

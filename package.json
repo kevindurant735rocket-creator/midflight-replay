@@ -1,0 +1,30 @@
+{
+  "name": "midflight",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Turn a finished AI coding-agent session into a scrubbable, single-file HTML replay you can attach to a PR. Zero deps, zero build, zero network.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "midflight": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "doctor": "node dist/cli.js doctor fixtures/codex-mini.jsonl --json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "playwright": "^1.63.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

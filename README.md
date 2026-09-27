@@ -1,0 +1,272 @@
+<h1 align="center">midflight</h1>
+
+<p align="center">
+  <b>Turn a finished AI coding-agent session into a single scrubbable HTML file you can attach to a PR.</b>
+</p>
+
+<p align="center">
+  <a href="#install">install</a> ·
+  <a href="#the-two-outputs">outputs</a> ·
+  <a href="#honest-coverage">coverage</a> ·
+  <a href="#privacy">privacy</a> ·
+  <a href="#faq">faq</a> ·
+  <a href="README.zh-CN.md">中文</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/replay-claude.png" alt="midflight replay of a real Claude Code session" width="880">
+</p>
+
+---
+
+## The problem
+
+Your agent wrote 1,400 lines across 40 files in 90 minutes. The PR is open. The
+reviewer cannot see that steps 12→19 were the same failed `pytest` invocation, that the
+agent burned 240k tokens re-reading a file it had already read, or that compaction
+hit at step 900 and changed how it reasoned afterward.
+
+So they review the diff like a stranger, comment "any way to test this?", and move on.
+You re-run the agent to produce an explanation, which produces a *new* session that
+does not match the one that produced the code.
+
+**midflight replays the session that actually made the code.** Not a summary, not a
+report — a scrubbable timeline with the real diffs, the real context accounting, and
+an honest statement of how much of it could be reconstructed.
+
+One command:
+
+```bash
+npx midflight replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay.html
+```
+
+`replay.html` is one self-contained file. No server, no CDN, no build step, no
+network requests — it works from `file://`, from a PR comment attachment, from an
+air-gapped laptop, from 2030.
+
+---
+
+## Install
+
+Requires **Node 20+**. Nothing else.
+
+```bash
+npx midflight replay <session.jsonl> --out replay.html
+```
+
+Or pin it:
+
+```bash
+npm i -g midflight
+```
+
+There is no `npm install` step for the tool itself — it ships zero runtime
+dependencies. (The repo's devDependencies exist only to compile and test the source.)
+
+---
+
+## Where are my session logs?
+
+midflight reads the JSONL the agents already write. It never asks you to enable
+anything, and it never touches your workspace.
+
+| Agent | Default location | File |
+|---|---|---|
+| Codex CLI | `~/.codex/sessions/YYYY/MM/DD/` | `rollout-*.jsonl` |
+| Claude Code | `~/.claude/projects/<mangled-cwd>/` | `<session-uuid>.jsonl` |
+
+```bash
+# newest Codex session
+npx midflight replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
+
+# newest Claude Code session
+npx midflight replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
+```
+
+Format is auto-detected from the first intact record, never from the file name, and
+never from the directory. A file that is neither format is rejected with a line number.
+
+---
+
+## The two outputs
+
+GitHub strips `<script>` and `<style>` from anything you paste into a comment. Every
+HTML exporter dies on that. So midflight has two shapes, and you pick:
+
+### 1. `--out replay.html` — the interactive replay
+
+The full experience. Single file, everything inline.
+
+- **Main axis** — the session timeline, one bar per step, coloured by kind
+- **Secondary axis** — stacked context composition (messages / reasoning / tool calls
+  / tool output) per step. Click a band or a legend entry to jump to the first step
+  carrying it
+- **Scrubber** — drag, or `space` play/pause, `←/→` or `j/k` single step,
+  `PageUp/PageDown` ±20 steps, `Home/End`. Also clickable
+- **Step detail** — payload, token accounting, and for edit steps a **unified diff**
+  with line numbers
+- **Compaction markers** — where context was compacted, drawn on the axis
+- **Honest coverage bar** — see below
+
+Measured on real data: 3.6k of 14.9k steps in a 109MB session, 3.2MB output,
+scrub under 100ms per step.
+
+### 2. `--paste` — the GitHub-safe digest
+
+```bash
+npx midflight replay session.jsonl --paste > digest.html
+```
+
+A ≤60KB block containing only `details / summary / table / pre / code / div`.
+Zero `<script>`, zero `<style>`, zero `on*=` handlers, zero external references —
+machine-asserted in the test suite, not just intended. It is CSS-free by design, so
+it stays readable even if a host strips every style attribute.
+
+This is a postmortem digest, not a fake interactive replay, and it does not pretend
+to be. If the digest does not fit the budget, sections are dropped in reverse
+priority order and the block **says how many were dropped**.
+
+---
+
+## Honest coverage
+
+The single most important design decision here.
+
+A session log does not always contain enough to reconstruct what happened on disk.
+Codex writes `cmd` and `path` arguments — **zero** `old_string` / `patch` fields across
+3,684 function calls in the session measured below. Claude Code writes `old_string` +
+`new_string` for `Edit`, and full `content` for `Write`. So the honest answer differs
+per agent, and midflight prints it instead of quietly showing an empty diff:
+
+| Verdict | Meaning |
+|---|---|
+| `full` | every edit step has a before-image; the replay is reconstructable |
+| `partial` | some edits have before-images, some don't — the bar shows the ratio |
+| `diff-only` | the log records *that* a file was written, never its prior content |
+| `no-edits` | the session made no file edits at all |
+
+Measured, not assumed:
+
+| Session | Size | Parse | Output | Steps | Coverage |
+|---|---|---|---|---|---|
+| Codex rollout | 109 MB | 378 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` (1,720 shell mutations detected) |
+| Claude Code | 32 MB | 115 ms | 2.05 MB | 3,000 / 3,622 | `partial` — 244 edits, 127 with before-image, 205 shell mutations |
+
+The 109MB file peaked at 253MB RSS. It is streamed line-by-line, never read whole.
+
+---
+
+## Privacy
+
+**midflight never writes to your workspace, never reads your git history, and never
+makes a network request.** Not once, at any code path. The browser acceptance test
+asserts zero outbound requests on the generated report.
+
+Redaction is **on by default** and runs before anything reaches the report:
+
+- OpenAI / Anthropic keys, GitHub PATs, Slack tokens, AWS keys, Google API keys
+- PEM private-key blocks, `Bearer` headers, JWTs
+- `api_key` / `secret` / `password` / `token = ...` assignments
+- email addresses
+- your home directory → `/HOME`, `/Users/<you>` → `/Users/USER`
+
+Disable with `--no-redact` if you are deliberately debugging a secret. Nothing is
+uploaded, so "uploaded" is not a failure mode. The report shows which rules fired
+and how many substitutions happened — as counts, never as values.
+
+---
+
+## Commands
+
+```
+midflight replay <session.jsonl> [options]   build a self-contained replay
+midflight doctor <session.jsonl> [--json]    parse and report health; exit 1 on bad input
+midflight stats  <session.jsonl> [--json]    parse and print step counts
+midflight redact                            run the redactor over stdin
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--out <file>` | stdout | write HTML here |
+| `--paste` | off | emit the GitHub-safe digest instead |
+| `--max-steps <n>` | 3000 | tool calls and compaction events are **never** dropped |
+| `--per-step-chars <n>` | 1200 | payload cap per step |
+| `--no-redact` | off | disable redaction |
+| `--json` | off | machine-readable summary on stderr |
+
+`doctor` is the one to run in CI or on a suspect file. It reports the first bad
+record **by line number** and exits non-zero.
+
+---
+
+## Why this and not the other eight tools
+
+There are eight existing projects doing "agent session replay" (measured: 388★,
+372★, 268★, 110★, 76★, 14★, 13★, 3★). Three conclusions from looking at all of them:
+
+1. **Session replay is a feature, not a category.** Sentry and PostHog both ship it
+   inside a bigger product. `rrweb` — the primitive everyone depends on — has 20k★.
+   A standalone viewer is competing for the leftovers.
+2. **"Local-first flight recorder" is already taken.** One project's own description
+   matches that phrasing almost word for word. It has 76★, a 31,000-character README in
+   four languages, MIT, and its last commit was two months before this was written.
+   Zero open issues. That is not a product failure; that is a distribution failure.
+3. **All eight are tools you use alone.** Nobody's output is meant to leave the
+   machine.
+
+midflight is built around the third point. The artifact is a file you send to someone
+who was not there. The scenario is reviewing an AI-generated PR, which is happening
+right now to a lot of people, and which has a built-in distribution channel that
+none of the eight have: the PR comment.
+
+Full measurements, repo-by-repo, with the commands to re-run them:
+[docs/COMPETITIVE.md](docs/COMPETITIVE.md).
+
+---
+
+## Roadmap
+
+Deliberately small. Seven things shipped; the next two are the ones with evidence
+behind them.
+
+- [x] Codex + Claude Code adapters, auto-detected
+- [x] dual-axis timeline with clickable context composition
+- [x] unified diffs on edit steps, with line numbers
+- [x] dual output: interactive HTML + GitHub-safe digest
+- [x] honest coverage verdict on every report
+- [x] default-on redaction, zero network
+- [x] `doctor` with line-accurate failure reporting
+- [ ] **postmortem detection** — flag loops, repeated edits, and near-full context
+- [ ] **patch-set export** — reconstruct file state at step *N*, `git apply -R`-able
+- [ ] more adapters, as they show up in real logs
+
+Not planned, on purpose: a server, an account, a database, a hosted dashboard, a
+re-run/fork feature. Each one needs a network call, and the network call is the
+thing this project exists to not do.
+
+---
+
+## Development
+
+```bash
+npm install          # devDeps only: typescript, vitest, playwright
+npm run build        # tsc -> dist/
+npm test             # 39 unit tests
+node scripts/browser-check.mjs out.html out2.html   # 60 browser assertions
+```
+
+The browser check is a separate command on purpose: it needs a Chromium download, and
+CI should not pay for that on every commit.
+
+Format internals for both agent formats are documented in
+[docs/FORMATS.md](docs/FORMATS.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: the zero-dependency and
+zero-network constraints are the product, not a preference — a PR that adds a runtime
+dependency will not merge.
+
+## License
+
+MIT
