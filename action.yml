@@ -1,0 +1,119 @@
+name: 'midflight-replay'
+description: 'Turn a committed AI coding-agent session log into a reviewable audit comment on the pull request.'
+author: 'kevindurant735rocket-creator'
+branding:
+  icon: 'play-circle'
+  color: 'purple'
+
+inputs:
+  session:
+    description: 'Path to the session log (.jsonl), or "auto" to pick the newest one under .agent-sessions/.'
+    required: false
+    default: 'auto'
+  dir:
+    description: 'Directory searched when session=auto.'
+    required: false
+    default: '.agent-sessions'
+  max-steps:
+    description: 'Max steps to embed in the digest.'
+    required: false
+    default: '3000'
+  comment:
+    description: 'Post the digest as a PR comment (needs pull-requests: write). Set false for step-summary only.'
+    required: false
+    default: 'true'
+  fail-on-parse-error:
+    description: 'Fail the job when the session log has parse errors.'
+    required: false
+    default: 'false'
+
+outputs:
+  session-path:
+    description: 'The session log that was actually replayed.'
+  steps:
+    description: 'Number of steps in the replayed session.'
+
+runs:
+  using: 'composite'
+  steps:
+    # The action repo itself is checked out at $GITHUB_ACTION_PATH, so this works
+    # before the npm package exists and without any install step in the caller.
+    - name: Build the replay CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "$GITHUB_ACTION_PATH"
+        npm ci --silent --no-audit --no-fund
+        npm run build --silent
+        node dist/cli.js help > /dev/null
+
+    - name: Resolve the session log
+      id: resolve
+      shell: bash
+      env:
+        SESSION: ${{ inputs.session }}
+        DIR: ${{ inputs.dir }}
+      run: |
+        set -euo pipefail
+        p="$SESSION"
+        if [ "$SESSION" = "auto" ]; then
+          p=$(ls -1t "$DIR"/*.jsonl 2>/dev/null | head -n 1 || true)
+        fi
+        if [ -z "$p" ] || [ ! -f "$p" ]; then
+          echo "::error::no session log found (session=$SESSION dir=$DIR). Add a .jsonl, or point 'session' at one."
+          exit 1
+        fi
+        echo "path=$p" >> "$GITHUB_OUTPUT"
+        echo "replaying $p ($(wc -c < "$p" | tr -d ' ') bytes)"
+
+    - name: Build the digest
+      id: digest
+      shell: bash
+      env:
+        PATH_OUT: ${{ steps.resolve.outputs.path }}
+        MAX_STEPS: ${{ inputs.max-steps }}
+      run: |
+        set -euo pipefail
+        cd "$GITHUB_ACTION_PATH"
+        node dist/cli.js replay "$PATH_OUT" --paste --max-steps "$MAX_STEPS" > digest.html
+        bytes=$(wc -c < digest.html | tr -d ' ')
+        if [ "$bytes" -gt 65536 ]; then
+          echo "::error::digest is $bytes bytes, over the 65536 GitHub comment ceiling"
+          exit 1
+        fi
+        {
+          echo "## Agent session replay"
+          echo
+          cat digest.html
+          echo
+          echo "<sub>Built by [midflight-replay](${{ github.server_url }}/${{ github.repository }}) from \`$PATH_OUT\`.</sub>"
+        } > comment.md
+        cp comment.md "$GITHUB_STEP_SUMMARY"
+        echo "digest-bytes=$bytes" >> "$GITHUB_OUTPUT"
+
+    - name: Fail on parse error
+      if: inputs.fail-on-parse-error == 'true'
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        PATH_OUT: ${{ steps.resolve.outputs.path }}
+      run: |
+        set -euo pipefail
+        node dist/cli.js doctor "$PATH_OUT" --json > /tmp/midflight-doctor.json
+        node -e '
+          const r = JSON.parse(require("fs").readFileSync("/tmp/midflight-doctor.json", "utf8"));
+          if (!r.ok) { console.error("::error::session did not parse cleanly"); process.exit(1); }
+          console.log("parsed cleanly:", r.steps, "steps,", r.bytes, "bytes");
+        '
+
+    - name: Post the audit comment
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        SERVER: ${{ github.server_url }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        node "$GITHUB_ACTION_PATH/scripts/post-comment.mjs" "$SERVER" "$REPO" "$PR_NUMBER" comment.md
