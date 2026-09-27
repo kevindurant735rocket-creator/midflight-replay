@@ -21,14 +21,28 @@
 
 ## The problem
 
-Your agent wrote 1,400 lines across 40 files in 90 minutes. The PR is open. The
-reviewer cannot see that steps 12→19 were the same failed `pytest` invocation, that the
-agent burned 240k tokens re-reading a file it had already read, or that compaction
-hit at step 900 and changed how it reasoned afterward.
+Here is a real session from this machine, measured with `midflight doctor` — no
+rounding, no illustration:
 
-So they review the diff like a stranger, comment "any way to test this?", and move on.
-You re-run the agent to produce an explanation, which produces a *new* session that
-does not match the one that produced the code.
+| | |
+|---|---|
+| log size | **109 MB** |
+| steps | **14,905** |
+| tool calls | **3,689** |
+| of those, file mutations | **1,720** — every one carried by a shell command |
+| before-images recorded | **0** |
+| context compactions | **22** |
+
+So the log knows *that* each of 1,720 files changed and *which command* changed it,
+and it does not know what any of those files looked like beforehand. Twenty-two times
+the agent's memory was compacted, and the log records the event but not what survived
+it.
+
+The code that came out of this is now a diff. The 109 MB of reasoning that produced
+the diff is a file no PR reviewer is going to open. So they read the diff like a
+stranger, comment "any way to test this?", and move on. If you want to explain it,
+you re-run the agent — which yields a *new* session that does not match the one that
+wrote the code.
 
 **midflight replays the session that actually made the code.** Not a summary, not a
 report — a scrubbable timeline with the real diffs, the real context accounting, and
@@ -108,7 +122,7 @@ The full experience. Single file, everything inline.
 - **Compaction markers** — where context was compacted, drawn on the axis
 - **Honest coverage bar** — see below
 
-Measured on real data: 3.6k of 14.9k steps in a 109MB session, 3.2MB output,
+Measured on real data: 3,716 of 14,905 steps kept from a 109MB session, 3.24MB output,
 scrub under 100ms per step.
 
 ### 2. `--paste` — the GitHub-safe digest
@@ -134,7 +148,8 @@ The single most important design decision here.
 
 A session log does not always contain enough to reconstruct what happened on disk.
 Codex writes `cmd` and `path` arguments — **zero** `old_string` / `patch` fields across
-3,684 function calls in the session measured below. Claude Code writes `old_string` +
+3,689 tool calls in the session measured below (`grep -c old_string` → `0` over all
+30,736 lines). Claude Code writes `old_string` +
 `new_string` for `Edit`, and full `content` for `Write`. So the honest answer differs
 per agent, and midflight prints it instead of quietly showing an empty diff:
 
@@ -149,10 +164,24 @@ Measured, not assumed:
 
 | Session | Size | Parse | Output | Steps | Coverage |
 |---|---|---|---|---|---|
-| Codex rollout | 109 MB | 378 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` (1,720 shell mutations detected) |
-| Claude Code | 32 MB | 115 ms | 2.05 MB | 3,000 / 3,622 | `partial` — 244 edits, 127 with before-image, 205 shell mutations |
+| Codex rollout | 109 MB | 379 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` — 1,720 shell-carried mutations, 0 before-images |
+| Claude Code | 31 MB | 123 ms | 2.05 MB | 3,000 / 3,622 | `partial` — 244 edits, 127 with before-image |
 
-The 109MB file peaked at 253MB RSS. It is streamed line-by-line, never read whole.
+A second honesty rule: steps the adapter cannot classify are labelled, counted and
+**rendered** — never silently dropped. Claude Code writes session-metadata records
+(`file-history-snapshot`, `ai-title`, `permission-mode`, …) that carry no agent action;
+in the 31 MB session above that is 521 of 3,622 steps. The header names that number
+instead of letting `unknown` look like a broken parser.
+
+Reproduce both rows yourself:
+
+```bash
+npx midflight doctor <session.jsonl> --json   # steps, byKind, parseErrors, unknownSteps
+/usr/bin/time -l npx midflight replay <session.jsonl> --out /tmp/r.html --json  # RSS
+```
+
+The 109 MB file peaked at **273 MB** RSS (`286,736,384` bytes) — it is streamed
+line-by-line and never held in memory whole.
 
 ---
 
@@ -216,8 +245,9 @@ your home directory. The report says which rules fired and how many times, never
 value. `--no-redact` turns it off.
 
 **Why does the coverage bar say `diff-only` on my Codex session?** Because that is
-the truth about the log. Codex records `cmd` and `path` arguments; across 3,684
-function calls in the session I measured, `old_string` and `patch` never appear. The
+the truth about the log. Codex records `cmd` and `path` arguments; across the 3,689
+tool calls in the session I measured, `old_string` and `patch` never appear — not once
+in 30,736 lines. The
 file *was* changed, but the previous content was never written down, so a diff
 cannot be reconstructed. Claude Code's `Edit` steps do record `old_string`, which is
 why those sessions land on `full` or `partial`.

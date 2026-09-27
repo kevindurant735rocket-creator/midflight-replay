@@ -42,6 +42,10 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
     },
     coverage,
     thin: { kept: t.kept, total: t.total, truncated: t.truncated, banner: t.truncated ? thinBanner(t.kept, t.total) : '' },
+    // Steps the adapter could not classify. These are *not* dropped — they are
+    // rendered and scrubbable — but a reader seeing them labelled "unknown"
+    // reasonably assumes the parser broke, so the header says what they are.
+    unknownCount: t.steps.filter((st) => st.kind === "unknown").length,
     parseErrorCount: session.parseErrors.length,
     parseErrorSample: session.parseErrors.slice(0, 5).map((e) => ({ line: e.line, error: e.error })),
     warnings: session.warnings.slice(0, 8),
@@ -340,6 +344,8 @@ function header(){
     '<span class="badge ok">✓ 不写工作区</span><span class="badge ok">✓ 不引 git</span><span class="badge ok">✓ 不伪造快照</span>'+
     '<span class="badge '+(D.parseErrorCount? "warn":"ok")+'">'+(D.parseErrorCount? "⚠ "+D.parseErrorCount+" 行损坏（已保留其余）" : "✓ 0 行损坏")+'</span>'+
     (D.ctx.unexplainedDrops? '<span class="badge warn">'+D.ctx.unexplainedDrops+" 次未解释的上下文下降</span>":'')+
+    (D.unknownCount? '<span class="badge ok" title="host 写入的会话元数据与未分类记录；已渲染并可拖动，不是解析失败。预算不足时会被 thin() 优先丢弃，丢弃量见下方提示。">'+D.unknownCount+
+      ' 步为会话元数据 / 未分类（已渲染）</span>':'')+
     '</div>';
   const pct=Math.round(c.ratio*100);
   hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+

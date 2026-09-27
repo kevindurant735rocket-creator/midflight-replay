@@ -22,14 +22,23 @@
 
 ## 问题在哪
 
-你的 agent 在 90 分钟里改了 40 个文件、写了 1400 行。PR 开了。评审的人看不到：
+这是本机一条真实会话，用 `midflight doctor` 量出来的，没有四舍五入、没有示意图：
 
-- 第 12→19 步是同一个失败的 `pytest` 调用，重复了 7 次
-- agent 花掉 24 万 token 重新读了一遍它早就读过的文件
-- 第 900 步发生了上下文压缩，之后它的推理方式变了
+| | |
+|---|---|
+| 日志体积 | **109 MB** |
+| 步数 | **14,905** |
+| 工具调用 | **3,689** |
+| 其中改动文件 | **1,720** 次 —— 全部由 shell 命令承载 |
+| 记录了改前内容的 | **0** 次 |
+| 上下文压缩 | **22** 次 |
 
-于是评审只能像陌生人一样看 diff，评论一句"这个怎么测"，然后翻篇。你为了解释，
-重跑一次 agent，于是得到一个**新**会话 —— 和当初写出这份代码的那个已经不是同一条了。
+也就是说：日志知道这 1,720 个文件被改过、也知道是哪条命令改的，却不知道任何一个文件
+改之前长什么样。上下文被压缩了 22 次，日志记下了"发生过"，但没记下"什么活了下来"。
+
+从这次会话里产出的代码，现在只剩一个 diff。而产生这个 diff 的 109 MB 推理过程，
+没有哪个 PR 评审人会去打开。于是他们像陌生人一样读 diff，评论一句"这个怎么测"，翻篇。
+想解释？重跑一次 agent —— 得到的是一个**新**会话，和当初写出代码的那条已经不是同一条。
 
 **midflight 回放的是真正写出那份代码的那条会话。** 不是摘要，不是报告 ——
 是一条可以来回拖动的时间轴，带真实的 diff、真实的上下文用量，以及一句诚实的
@@ -107,7 +116,7 @@ GitHub 会把粘进评论里的 `<script>` 和 `<style>` 全部剥掉。所有 H
 - **压缩标记** —— 上下文在哪里被 compact，画在轴上
 - **诚实覆盖条** —— 见下
 
-实测（真实数据）：109MB 会话里保留 14,905 步中的 3,716 步，输出 3.2MB，
+实测（真实数据）：109MB 会话里保留 14,905 步中的 3,716 步，输出 3.24MB，
 每步 scrub 延迟 <100ms。
 
 ### 2. `--paste` —— GitHub 安全块
@@ -130,7 +139,7 @@ npx midflight replay session.jsonl --paste > digest.html
 这是整个项目最重要的一个设计决定。
 
 会话日志不一定包含足够信息来重建磁盘上发生的事。Codex 只写 `cmd` 和 `path` 参数 ——
-在实测的那条会话里，3,684 次 function_call 中 `old_string` / `patch` 出现次数为**零**。
+在实测的那条会话里，3,689 次 tool_call、30,736 行日志中，`old_string` / `patch` 出现次数为**零**。
 Claude Code 的 `Edit` 带 `old_string` + `new_string`，`Write` 带完整 `content`。
 
 所以诚实的答案因 agent 而异。midflight 把它印出来，而不是给你看一个空 diff 却什么都不说：
@@ -146,10 +155,22 @@ Claude Code 的 `Edit` 带 `old_string` + `new_string`，`Write` 带完整 `cont
 
 | 会话 | 大小 | 解析 | 输出 | 步数 | 覆盖判定 |
 |---|---|---|---|---|---|
-| Codex rollout | 109 MB | 378 ms | 3.24 MB | 3,716 / 14,905 | `diff-only`（识别出 1,720 处 shell 改动） |
-| Claude Code | 32 MB | 115 ms | 2.05 MB | 3,000 / 3,622 | `partial` —— 244 次编辑，127 次有 before-image，205 处 shell 改动 |
+| Codex rollout | 109 MB | 379 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` —— 1,720 处 shell 改动，0 处 before-image |
+| Claude Code | 31 MB | 123 ms | 2.05 MB | 3,000 / 3,622 | `partial` —— 244 次编辑，127 次带 before-image |
 
-那个 109MB 的文件峰值 RSS 253MB。解析是逐行流式的，从不整文件读进内存。
+第二条诚实规则：适配器无法分类的步会被**标注、计数并渲染**，绝不静默丢弃。Claude Code 会写入
+会话元数据记录（`file-history-snapshot` / `ai-title` / `permission-mode` 等），它们不承载
+agent 动作 —— 上面那条 31MB 会话里有 521 步属于这类（共 3,622 步）。报告头部会把这个数字
+打出来，而不是让 `未知` 这个标签看起来像解析器坏了。
+
+两行都可以自己复现：
+
+```bash
+npx midflight doctor <session.jsonl> --json   # steps / byKind / parseErrors / unknownSteps
+/usr/bin/time -l npx midflight replay <session.jsonl> --out /tmp/r.html --json  # RSS
+```
+
+那个 109MB 的文件峰值 RSS **273MB**（`286,736,384` 字节）。解析是逐行流式的，从不整文件读进内存。
 
 ---
 

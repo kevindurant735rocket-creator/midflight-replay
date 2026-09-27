@@ -256,3 +256,28 @@ describe('AC-6 doctor on the real fixtures', () => {
     expect(Array.isArray(s.parseErrors)).toBe(true);
   });
 });
+
+describe('AC-15 unclassified steps are disclosed, not hidden', () => {
+  const withUnknown = (n: number): Session => sess([
+    ...Array.from({ length: n }, (_, i) => ({ kind: 'unknown' as const, ts: i, raw: 'file-history-snapshot' })),
+    tc('shell', '{"command":"ls"}'),
+  ]);
+
+  it('counts unknown steps into the report payload', () => {
+    const r = buildReport(withUnknown(7));
+    expect(r.html).toContain('"unknownCount":7');
+  });
+
+  it('drives the header badge from the payload, guarded on a truthy count', () => {
+    // The badge is rendered client-side, so assert the wiring, not the markup:
+    // the header branch must read D.unknownCount and must be conditional on it.
+    const r = buildReport(withUnknown(7));
+    expect(r.html).toContain('"unknownCount":7');
+    expect(r.html).toMatch(/D\.unknownCount\s*\?[^]*?步为会话元数据 \/ 未分类（已渲染）/);
+  });
+
+  it('reports zero when every step was classified', () => {
+    const r = buildReport(sess([tc('shell', '{"command":"ls"}')]));
+    expect(r.html).toContain('"unknownCount":0');
+  });
+});
