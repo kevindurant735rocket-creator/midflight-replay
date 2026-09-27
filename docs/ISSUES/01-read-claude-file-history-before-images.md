@@ -1,3 +1,9 @@
+> **SHIPPED 2026-09-27 — this file is the original proposal, kept for the
+> reasoning. It is not an open task.** `src/filehistory.ts` landed in
+> `7a022b8`; GitHub issue #1 is closed; `docs/BACKLOG.md` P0-1 reads
+> **DONE 2026-09-27** with the measured join counts. For current state read
+> `docs/BACKLOG.md`, not this file.
+
 # Read Claude Code `~/.claude/file-history` before-images (P0-1)
 
 `midflight replay` on a Claude Code session currently reports edits without

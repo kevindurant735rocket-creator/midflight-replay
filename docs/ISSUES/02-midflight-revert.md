@@ -1,3 +1,10 @@
+> **SHIPPED 2026-09-27 — this file is the original proposal, kept for the
+> reasoning. It is not an open task.** `src/revert.ts` landed in `5cbe923`;
+> GitHub issue #2 is closed; `docs/BACKLOG.md` P0-2 reads **DONE 2026-09-27**
+> with the verified `git apply --check -R` rc=0 acceptance run. The P0-1
+> block described below no longer applies. For current state read
+> `docs/BACKLOG.md`, not this file.
+
 # `midflight revert` — the inverse of the report (P0-2)
 
 Once before-images are real ([P0-1](01-read-claude-file-history-before-images.md)),
