@@ -122,7 +122,7 @@ gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md
 ## 5. npm
 
 ```bash
-npm pack --dry-run           # expect: 42.1 kB, 29 files, CHANGELOG.md + README.md + LICENSE present
+npm pack --dry-run           # expect: 49.5 kB, 29 files, CHANGELOG.md + README.md + LICENSE present
 npm whoami                   # must be an account that owns the `midflight` name
 npm publish --access public
 npm view midflight version   # must print 0.1.0
