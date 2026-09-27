@@ -366,6 +366,8 @@ and how many substitutions happened — as counts, never as values.
 midflight replay <session.jsonl> [options]   build a self-contained replay
 midflight doctor <session.jsonl> [--json]    parse and report health; exit 1 on bad input
 midflight stats  <session.jsonl> [--json]    parse and print step counts
+midflight revert  <report.html> --step <n>    print the patch that undoes step n
+midflight revert  <report.html> --list       show which steps are reversible
 midflight redact                            run the redactor over stdin
 midflight --version                          print the installed version
 ```
@@ -381,6 +383,25 @@ midflight --version                          print the installed version
 
 `doctor` is the one to run in CI or on a suspect file. It reports the first bad
 record **by line number** and exits non-zero.
+
+### `revert` — the report's inverse
+
+A report proves what an agent did. `revert` turns one step back into a patch:
+
+```
+midflight revert replay.html --list                    # which steps can be undone
+midflight revert replay.html --step 42 --out p.diff   # write the patch
+git apply --check -R p.diff                           # verify
+git apply -R p.diff                                   # then, if you agree
+```
+
+It **never writes to your working tree** — the only command that does is `git apply`,
+yours, after you have read the patch. `--list` works on a report alone, so a colleague
+can see what is reversible without having your checkout.
+
+When a step has no recoverable before-image, `revert` **refuses with a non-zero exit**
+instead of emitting an empty patch. A tool that quietly produces a no-op it calls a
+revert is worse than one that says no.
 
 ---
 

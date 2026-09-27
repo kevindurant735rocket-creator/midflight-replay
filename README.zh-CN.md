@@ -333,6 +333,8 @@ npx midflight-replay doctor <session.jsonl> --json   # steps / byKind / parseErr
 midflight replay <session.jsonl> [options]   生成自包含回放
 midflight doctor <session.jsonl> [--json]    解析并体检；输入有问题时 exit 1
 midflight stats  <session.jsonl> [--json]    解析并打印步数统计
+midflight revert  <report.html> --step <n>    打印撤销第 n 步所需的补丁
+midflight revert  <report.html> --list       列出哪些步骤可逆放
 midflight redact                            对 stdin 跑脱敏
 midflight --version                          打印已安装的版本
 ```
@@ -348,6 +350,23 @@ midflight --version                          打印已安装的版本
 
 文件可疑的时候跑 `doctor`。它会报出**第一条坏记录的行号**，并以非零码退出。
 可以放进 CI。
+
+### `revert` —— 报告的逆运算
+
+报告能证明 agent 做了什么。`revert` 把其中一步变回一个补丁：
+
+```
+midflight revert replay.html --list                    # 哪些步可以撤
+midflight revert replay.html --step 42 --out p.diff   # 写出补丁
+git apply --check -R p.diff                           # 先验
+git apply -R p.diff                                   # 看完再撤
+```
+
+它**绝不写你的工作区** —— 唯一会写的是 `git apply`，由你亲自下，你已经先看过补丁。
+`--list` 只需要报告本身，所以同事没你的 checkout 也能看出哪些步可撤。
+
+某一步如果没有可恢复的 before-image，`revert` 会**非零退出并明确拒绝**，
+而不是吐一个空补丁。悄悄给一个空操作贴上"已撤销"的标签，比直接说不行更糟。
 
 ---
 

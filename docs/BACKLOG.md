@@ -30,7 +30,7 @@ people instead of the median 300.
 | # | Row | Why it is P0 (measured) | Source |
 |---|---|---|---|
 | P0-1 | ~~Read Claude Code `~/.claude/file-history` before-images~~ | **DONE 2026-09-27.** `src/filehistory.ts` joins `delta.messageId`→`assistant.uuid`→`tool_use.file_path`. 274/274 messageIds resolve across 40 sessions; 25/25 paths match. Rescue proven by stripping `old_string` from session 671a21ed: `backups=113 joined=55 recovered=55` (that session had 0 reversible edits before). 55 edits now render real del/add, badged as backup-sourced. | closed |
-| P0-2 | `midflight revert` | **Unblocked by P0-1.** The before-image source is now real and, for backup-joined edits, whole-file. The report is still read-only by design, which is correct; the inverse is the next capability. Note the ceiling: a revert is only as good as the before-image, so backup-only edits (no inline `old_string`) are the ones worth gating hardest. | KNOWN-GAPS §5 |
+| P0-2 | ~~`midflight revert`~~ | **DONE 2026-09-27.** `src/revert.ts` + `unifiedPatch()` in `src/diff.ts`. Diffs WHOLE-FILE before/after states, not fragments — a fragment hunk (`@@ -1,1 @@`, no context) fails `git apply --check -R` even on a real edit; proven in a throwaway repo, locked by a test. Acceptance hit: real session → real report → `revert --step` → `git apply --check -R` rc=0 → `git apply -R` restores the file byte-identical. 7 refusal codes (NO_BEFORE_IMAGE / TREE_DIVERGED / TREE_UNREADABLE / EMPTY_DIFF / NO_FILE_PATH / NOT_A_FILE_EDIT / STEP_OUT_OF_RANGE). Never writes the tree. 17 tests. | closed |
 
 ## P1 — the two facts the competitive scan says decide this project's ceiling
 

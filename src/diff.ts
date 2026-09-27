@@ -129,3 +129,49 @@ export function diffFromArgs(rawArgs: string, beforeImage?: string, newText?: st
     reconstructable: false,
   };
 }
+
+/**
+ * Render a before/after pair as a git-appliable unified diff, with real context lines.
+ *
+ * The per-step `old_string` / `new_string` are FRAGMENTS, not whole files, so a hunk built
+ * from them alone (`@@ -1,1 @@` / `-old` / `+new`) has no context and no true line number:
+ * `git apply` cannot locate it, and `git apply --check` fails even though the edit is real.
+ * A revert tool must therefore diff the WHOLE file, not the fragment. Callers supply the
+ * whole before-state (from the host's backup) and the whole after-state (the file as it
+ * stands now), and this renders them the way git expects. See src/revert.ts.
+ */
+export function unifiedPatch(beforeText: string, afterText: string, relPath: string, contextLines = 3): string {
+  const d = lcsDiff(lines(beforeText), lines(afterText));
+  const out: string[] = [`--- a/${relPath}`, `+++ b/${relPath}`];
+  // Mark which diff lines fall inside a hunk: a change plus up to `contextLines` of context
+  // on each side, splitting when two change-runs are farther apart than 2*contextLines.
+  const keep = new Array<boolean>(d.length).fill(false);
+  const changed = (i: number) => d[i].kind !== 'ctx';
+  for (let i = 0; i < d.length; i++) {
+    if (!changed(i)) continue;
+    const from = Math.max(0, i - contextLines);
+    const to = Math.min(d.length - 1, i + contextLines);
+    for (let j = from; j <= to; j++) keep[j] = true;
+  }
+  let i = 0;
+  while (i < d.length) {
+    if (!keep[i]) { i++; continue; }
+    // collect one hunk
+    let end = i;
+    while (end + 1 < d.length && keep[end + 1]) end++;
+    // compute -/+ ranges
+    let aStart = -1, bStart = -1, aCount = 0, bCount = 0;
+    for (let j = i; j <= end; j++) {
+      const L = d[j];
+      if (L.kind !== 'add') { if (aStart < 0) aStart = L.a!; aCount++; }
+      if (L.kind !== 'del') { if (bStart < 0) bStart = L.b!; bCount++; }
+    }
+    out.push(`@@ -${aStart},${aCount} +${bStart},${bCount} @@`);
+    for (let j = i; j <= end; j++) {
+      const L = d[j];
+      out.push((L.kind === 'add' ? '+' : L.kind === 'del' ? '-' : ' ') + L.text);
+    }
+    i = end + 1;
+  }
+  return out.join('\n') + '\n';
+}

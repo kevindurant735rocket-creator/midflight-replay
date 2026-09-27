@@ -72,8 +72,23 @@ curve.
 Session **X** yields 30 unparseable lines out of 14,905 (0.2%). They are listed in the
 report footer with their line numbers. `midflight doctor` exits non-zero on them.
 
-## 5. No undo button, by design
+## 5. Undo exists, but it is a patch, not a button
 
-The report is a read-only artefact. It proves what happened; it does not write to the
-working tree. A future `midflight revert` is out of scope until the before-image story
-above is settled.
+The report is a read-only artefact and it stays that way: `midflight revert` prints a
+patch, and `git apply` — yours, after you have read it — is the only thing that writes.
+The report itself never touches a working tree, and neither does any other command.
+
+What that costs, stated plainly:
+
+- **A revert is only as good as its before-image.** A step whose before-image came from
+  the log's inline `old_string` is reconstructed from a fragment; the tool substitutes it
+  back into the file as it stands and refuses if the text is gone or ambiguous. That is
+  a guard, not a guarantee.
+- **A create cannot be reverted.** There is no before-image of a file that did not exist,
+  so `revert` refuses. Deleting it is a `git rm`, and the tool will not do that for you.
+- **`--check` still has to pass.** `git apply --check -R` is the last gate, and it is
+  yours to run. A patch that applies to a dirty tree is a patch that applies to whatever
+  is in the tree, not to what the report saw.
+- **No multi-step revert.** One step in, one patch out. A range would be a different
+  command with a different blast radius, and the ceiling above is what makes that
+  decision easy: it should refuse more than this one does.

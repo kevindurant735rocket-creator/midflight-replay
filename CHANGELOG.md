@@ -8,6 +8,39 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`midflight revert` — the report's inverse.** Given a report and a step index, it
+  prints one unified diff that undoes that step, ready for `git apply -R`:
+
+  ```
+  midflight revert replay.html --list                    # which steps can be undone
+  midflight revert replay.html --step 42 --out p.diff   # write the patch
+  git apply --check -R p.diff                           # verify
+  ```
+
+  It never writes to the working tree. The only command that does is `git apply`,
+  which stays yours, after you have read the patch. `--list` needs nothing but the
+  report file, so it works for a colleague who does not have your checkout.
+
+  **Both sides of the hunk are whole files, never fragments.** An `old_string` /
+  `new_string` pair from a log is a fragment: rendered alone it yields `@@ -1,1 @@`
+  with no context and no true line number, and `git apply --check` fails to place it
+  even though the edit is real. So the before-state comes from the host's own backup
+  when file-history linked one ([P0-1](#unreleased)), otherwise from the log's
+  `old_string` substituted back into the file as it stands, and the after-state is the
+  file as it is on disk right now — which is the state the patch has to apply to.
+
+  It **refuses loudly, non-zero**, instead of emitting something that looks like a
+  revert: `NO_BEFORE_IMAGE` (no before-image at all), `TREE_DIVERGED` (the file no
+  longer contains what the step wrote, or contains it more than once), `TREE_UNREADABLE`
+  (the target is gone), `EMPTY_DIFF` (before and after are identical). Reverting a
+  reconstruction is a way to lose work; a tool that says "no" is worth more than one
+  that guesses.
+
+  Verified end to end against a real git repository: a real session log → real report →
+  `revert --step` → `git apply --check -R` exits 0 → `git apply -R` restores the file
+  byte for byte. 17 tests cover both sources, every refusal, and the guarantee that
+  the working tree is untouched.
+
 - **Before-images from the host's own backup store** — `midflight` now reads
   `~/.claude/file-history/<sessionId>/<hash>@v<n>` and pairs each `file-history-delta`
   with the edit that produced it. The join is the transcript, not a guess:

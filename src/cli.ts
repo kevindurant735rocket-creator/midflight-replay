@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { closeSync, openSync, readSync, statSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
 import { detectAdapter, parseSession, statsOf } from './adapters/index.js';
 import { redact } from './redact.js';
+import { readReportPayload, planRevert, listRevertable } from './revert.js';
 import { buildReport } from './report.js';
 import { buildPaste, assertPasteSafe } from './paste.js';
 import { writeFileSync } from 'node:fs';
@@ -13,6 +14,10 @@ Usage
   midflight replay <session.jsonl> [options]   build a self-contained replay
   midflight doctor <session.jsonl> [--json]    parse a session and report health; exit 1 on bad input
   midflight stats  <session.jsonl> [--json]    parse and print step counts
+  midflight revert  <report.html> --step <n> [--out patch.diff]
+  midflight revert  <report.html> --list        show which steps are reversible
+                                                prints a reverse-appliable patch; never
+                                                writes the working tree
   midflight redact                            run the redactor over stdin
   midflight --version                          print the installed version
   midflight help
@@ -201,6 +206,69 @@ function countLines(p: string): number {
   }
 }
 
+function argValue(argv: string[], flag: string): string | undefined {
+  const i = argv.indexOf(flag);
+  return i >= 0 ? argv[i + 1] : undefined;
+}
+
+async function cmdRevert(argv: string[]): Promise<number> {
+  // Consume flag values so they never look like the positional report path.
+  const consumed = new Set<string>();
+  for (const f of ['--step', '--out']) {
+    const i = argv.indexOf(f);
+    if (i >= 0) { consumed.add(argv[i]); if (argv[i + 1]) consumed.add(argv[i + 1]); }
+  }
+  const positional = argv.filter((a) => !a.startsWith('--') && !consumed.has(a));
+  const reportPath = positional[0];
+  if (!reportPath) {
+    console.error('error: revert needs a report file (one produced by `midflight replay`)');
+    return 2;
+  }
+  const html = readFileSync(reportPath, 'utf8');
+  let steps; let cwd: string | undefined;
+  try {
+    ({ steps, cwd } = readReportPayload(html));
+  } catch (e) {
+    console.error(`error: ${(e as Error).message}`);
+    return 2;
+  }
+
+  if (argv.includes('--list')) {
+    // --list must work on a report alone: a colleague may not have the checkout.
+    const rows = listRevertable(steps);
+    if (rows.length === 0) {
+      console.error('这份报告里没有可逆放的编辑：没有任何一步带 before-image。');
+      return 1;
+    }
+    for (const r of rows) {
+      console.log(`step ${String(r.step).padStart(5)}  [${r.source.padEnd(12)}]  ${r.path}`);
+    }
+    console.error(`\n${rows.length} 个可逆放步骤。用 --step <n> 生成补丁。`);
+    return 0;
+  }
+
+  const stepArg = argValue(argv, '--step');
+  if (stepArg === undefined) {
+    console.error('error: revert needs --step <n> (or --list to see which steps are reversible)');
+    return 2;
+  }
+  const n = Number(stepArg);
+  const r = planRevert(steps, n, cwd);
+  if (!r.ok) {
+    console.error(`refused: ${r.reason}`);
+    return 1;
+  }
+  const out = argValue(argv, '--out');
+  if (out) {
+    writeFileSync(out, r.patch, 'utf8');
+    console.error(`wrote ${out}  step ${r.step}  ${r.path}  +${r.added} -${r.removed}  source=${r.source}`);
+    console.error(`apply it backwards with:  git apply -R ${out}`);
+  } else {
+    process.stdout.write(r.patch);
+  }
+  return 0;
+}
+
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
@@ -229,6 +297,8 @@ async function main(): Promise<number> {
       }
       case 'stats':
         return await cmdStats(rest[0] ?? '', json);
+      case 'revert':
+        return await cmdRevert(argv.slice(1));
       case 'redact': {
         const chunks: Buffer[] = [];
         for await (const c of process.stdin) chunks.push(c as Buffer);
