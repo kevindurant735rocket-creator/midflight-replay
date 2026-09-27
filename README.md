@@ -14,7 +14,7 @@
 
 
 <p align="center">
-  <a href="#see-it-move">24s replay</a> ·
+  <a href="#see-it-move">16s replay</a> ·
   <a href="#install">install</a> ·
   <a href="#the-two-outputs">outputs</a> ·
   <a href="#put-it-on-the-pull-request">action</a> ·
@@ -39,12 +39,12 @@
 </p>
 
 A real Claude Code session from this machine — **32 MB of raw JSONL, 3,111 parsed
-steps, 10 first-hand compaction events** — played back in 24 seconds. No mock data,
+steps, 10 first-hand compaction events** — compressed into a 16-second replay. No mock data,
 no hand-written demo fixture: the file was produced by `midflight replay` against a
 session log the agent wrote about its own work.
 
 <p align="center">
-  <img src="docs/demo/demo.webm" alt="24-second scrub-through of a 32MB Claude Code session: timeline scrub, context sawtooth, before-image diff" width="880" controls loop>
+  <img src="docs/demo/demo.webm" alt="16-second scrub-through of a 32MB Claude Code session: timeline scrub, context sawtooth, before-image diff" width="880" controls loop>
 </p>
 
 <p align="center">

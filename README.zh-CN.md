@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="#看它动起来">24s 回放</a> ·
+  <a href="#看它动起来">16s 回放</a> ·
   <a href="#安装">安装</a> ·
   <a href="#两种输出">两种输出</a> ·
   <a href="#放到-pr-上">action</a> ·
@@ -32,10 +32,10 @@
 
 ## 看它动起来
 
-本机一条真实 Claude Code 会话——**原始 JSONL 32 MB，解析出 3,111 步，10 次第一手压缩事件**——24 秒回放完。不是 mock 数据，也不是手写 demo 素材：视频里的文件就是 `midflight replay` 对着一条真实会话日志跑出来的。
+本机一条真实 Claude Code 会话——**原始 JSONL 32 MB，解析出 3,111 步，10 次第一手压缩事件**——压进 16 秒回放。不是 mock 数据，也不是手写 demo 素材：视频里的文件就是 `midflight replay` 对着一条真实会话日志跑出来的。
 
 <p align="center">
-  <img src="docs/demo/demo.webm" alt="32MB Claude Code 会话 24 秒回放：时间轴拖动、上下文锯齿、before-image diff" width="880" controls loop>
+  <img src="docs/demo/demo.webm" alt="32MB Claude Code 会话 16 秒回放：时间轴拖动、上下文锯齿、before-image diff" width="880" controls loop>
 </p>
 
 <p align="center">

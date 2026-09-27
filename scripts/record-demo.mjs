@@ -23,7 +23,7 @@ const argv = process.argv.slice(2);
 const file = argv[0];
 const opt = (k, d) => { const i = argv.indexOf(k); return i === -1 ? d : argv[i + 1]; };
 const outDir = resolve(opt('--out', 'docs/demo'));
-const seconds = Number(opt('--seconds', 24));
+const seconds = Number(opt('--seconds', 16));
 const W = 1280, H = 800;
 
 if (!file) { console.error('usage: node scripts/record-demo.mjs <report.html> [--out dir] [--seconds n]'); process.exit(2); }
