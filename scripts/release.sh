@@ -84,6 +84,15 @@ elif ! npm whoami >/dev/null 2>&1; then
   echo "  SKIP: npm not logged in. Run 'npm login', then: bash scripts/release.sh --yes --npm-only" >&2
 else
   echo "  publishing as $(npm whoami)"
+  # `npm publish` cannot be undone for 72h, and prepublishOnly runs in this checkout,
+  # never against the layout the registry serves. So prove the tarball first. This is
+  # not ceremony: it is the gate that caught patches `git apply` could not place.
+  if bash scripts/verify-tarball.sh "$VERSION"; then
+    :
+  else
+    echo "  REFUSING TO PUBLISH: the tarball did not survive a clean install." >&2
+    exit 1
+  fi
   run npm publish --access public
   run npm view "$NAME" version
 fi

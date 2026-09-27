@@ -24,7 +24,8 @@
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "doctor": "node dist/cli.js doctor fixtures/codex-mini.jsonl --json",
-    "check:links": "node scripts/link-check.mjs README.md README.zh-CN.md CONTRIBUTING.md CHANGELOG.md docs/*.md docs/ISSUES/*.md"
+    "check:links": "node scripts/link-check.mjs README.md README.zh-CN.md CONTRIBUTING.md CHANGELOG.md docs/*.md docs/ISSUES/*.md",
+    "verify:tarball": "bash scripts/verify-tarball.sh"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
