@@ -25,10 +25,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109MB Codex session: 14,905 steps, 30,736 log lines, opened in under half a second" width="880">
+  <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109 MiB Codex session: 14,905 steps, 30,736 log lines, opened in under half a second" width="880">
 </p>
 
-<p align="center"><sub>A real Codex session from this machine &mdash; 109 MB of raw JSONL, 14,905 parsed steps &mdash; opened in under half a second. The code in the picture is the actual session log, not a mock.</sub></p>
+<p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,905 parsed steps &mdash; opened in under half a second. The code in the picture is the actual session log, not a mock.</sub></p>
 
 ---
 
@@ -38,7 +38,7 @@
   <img src="docs/images/replay-claude.png" alt="midflight replay of a real Claude Code session" width="880">
 </p>
 
-A real Claude Code session from this machine — **32 MB of raw JSONL, 3,111 parsed
+A real Claude Code session from this machine — **31 MiB of raw JSONL, 3,111 parsed
 steps, 10 first-hand compaction events** — compressed into a 16-second replay. No mock data,
 no hand-written demo fixture: the file was produced by `midflight replay` against a
 session log the agent wrote about its own work.
@@ -80,7 +80,7 @@ rounding, no illustration:
 
 | | |
 |---|---|
-| log size | **109 MB** |
+| log size | **109 MiB** |
 | steps | **14,905** |
 | tool calls | **3,689** |
 | of those, file mutations | **1,720** — every one carried by a shell command |
@@ -92,7 +92,7 @@ and it does not know what any of those files looked like beforehand. Twenty-two 
 the agent's memory was compacted, and the log records the event but not what survived
 it.
 
-The code that came out of this is now a diff. The 109 MB of reasoning that produced
+The code that came out of this is now a diff. The 109 MiB of reasoning that produced
 the diff is a file no PR reviewer is going to open. So they read the diff like a
 stranger, comment "any way to test this?", and move on. If you want to explain it,
 you re-run the agent — which yields a *new* session that does not match the one that
@@ -178,7 +178,7 @@ The full experience. Single file, everything inline.
 - **Compaction markers** — where context was compacted, drawn on the axis
 - **Honest coverage bar** — see below
 
-Measured on real data: 3,716 of 14,905 steps kept from a 109MB session, 3.24MB output,
+Measured on real data: 4,016 of 14,905 steps kept from a 109 MiB session, 3.38MB output,
 scrub under 100ms per step.
 
 ### 2. `--paste` — the GitHub-safe digest
@@ -231,8 +231,8 @@ no session for it to read unless one is committed. Point `session:` at a file in
 repo, or set `dir:` to wherever yours live.
 
 **What it costs:** one `npm ci` and one `tsc` on a zero-dependency project. This
-machine's real 114 MB / 30,736-line / 14,905-step Codex session parses in **433 ms**
-and produces a 9,381-byte digest.
+machine's real 109 MiB (114,325,714 bytes) / 30,736-line / 14,905-step Codex session parses in **under
+500 ms** and produces a 9,381-byte digest.
 
 This repo runs the action on its own pull requests — see
 [`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml).
@@ -259,8 +259,8 @@ Measured, not assumed:
 
 | Session | Size | Parse | Output | Steps | Coverage |
 |---|---|---|---|---|---|
-| Codex rollout | 109 MB | 379 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` — 1,720 shell-carried mutations, 0 before-images |
-| Claude Code | 32 MB | 118 ms | 2.29 MB | 3,000 / 3,111 | `partial` — 244 edits, 127 with before-image |
+| Codex rollout | 109 MiB | ~0.4 s | 3.38 MiB | 4,016 / 14,905 | `diff-only` — 1,720 shell-carried mutations, 0 before-images |
+| Claude Code | 31 MiB | ~0.13 s | 2.19 MiB | 3,000 / 3,111 | `partial` — 244 edits, 127 with before-image |
 
 A second honesty rule: steps the adapter cannot classify are labelled, counted and
 **rendered** — never silently dropped. Claude Code writes session-metadata records
@@ -268,7 +268,7 @@ A second honesty rule: steps the adapter cannot classify are labelled, counted a
 so midflight now **recognises** them instead of parking them in a bucket: `ai-title` and
 `agent-name` become the session title, `file-history-delta` is named chrome, and
 `compact_boundary` becomes a first-class compaction event. That last one used to be a
-silent lie — the 32 MB session above contains **10** of them, and an earlier build
+silent lie — the 31 MiB session above contains **10** of them, and an earlier build
 claimed "no compaction observed" because it swallowed them as chrome.
 
 The result on that session is `unknownCount: 0` across all 3,111 steps:
@@ -285,7 +285,7 @@ npx midflight-replay doctor <session.jsonl> --json   # steps, byKind, parseError
 /usr/bin/time -l npx midflight-replay replay <session.jsonl> --out /tmp/r.html --json  # RSS
 ```
 
-The 109 MB file peaked at **273 MB** RSS (`286,736,384` bytes) — it is streamed
+The 109 MiB file peaked at **273 MB** RSS (`286,736,384` bytes) — it is streamed
 line-by-line and never held in memory whole.
 
 ---

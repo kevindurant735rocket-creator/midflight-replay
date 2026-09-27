@@ -25,14 +25,14 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/replay-codex-109mb.png" alt="midflight 回放一条 109MB 的真实 Codex 会话" width="880">
+  <img src="docs/images/replay-codex-109mb.png" alt="midflight 回放一条 109 MiB 的真实 Codex 会话" width="880">
 </p>
 
 ---
 
 ## 看它动起来
 
-本机一条真实 Claude Code 会话——**原始 JSONL 32 MB，解析出 3,111 步，10 次第一手压缩事件**——压进 16 秒回放。不是 mock 数据，也不是手写 demo 素材：视频里的文件就是 `midflight replay` 对着一条真实会话日志跑出来的。
+本机一条真实 Claude Code 会话——**原始 JSONL 31 MiB，解析出 3,111 步，10 次第一手压缩事件**——压进 16 秒回放。不是 mock 数据，也不是手写 demo 素材：视频里的文件就是 `midflight replay` 对着一条真实会话日志跑出来的。
 
 <p align="center">
   <img src="docs/demo/demo.webm" alt="32MB Claude Code 会话 16 秒回放：时间轴拖动、上下文锯齿、before-image diff" width="880" controls loop>
@@ -64,7 +64,7 @@ open replay.html
 
 | | |
 |---|---|
-| 日志体积 | **109 MB** |
+| 日志体积 | **109 MiB** |
 | 步数 | **14,905** |
 | 工具调用 | **3,689** |
 | 其中改动文件 | **1,720** 次 —— 全部由 shell 命令承载 |
@@ -74,7 +74,7 @@ open replay.html
 也就是说：日志知道这 1,720 个文件被改过、也知道是哪条命令改的，却不知道任何一个文件
 改之前长什么样。上下文被压缩了 22 次，日志记下了"发生过"，但没记下"什么活了下来"。
 
-从这次会话里产出的代码，现在只剩一个 diff。而产生这个 diff 的 109 MB 推理过程，
+从这次会话里产出的代码，现在只剩一个 diff。而产生这个 diff 的 109 MiB 推理过程，
 没有哪个 PR 评审人会去打开。于是他们像陌生人一样读 diff，评论一句"这个怎么测"，翻篇。
 想解释？重跑一次 agent —— 得到的是一个**新**会话，和当初写出代码的那条已经不是同一条。
 
@@ -155,7 +155,7 @@ GitHub 会把粘进评论里的 `<script>` 和 `<style>` 全部剥掉。所有 H
 - **压缩标记** —— 上下文在哪里被 compact，画在轴上
 - **诚实覆盖条** —— 见下
 
-实测（真实数据）：109MB 会话里保留 14,905 步中的 3,716 步，输出 3.24MB，
+实测（真实数据）：109 MiB 会话里保留 14,905 步中的 4,016 步，输出 3.38MB，
 每步 scrub 延迟 <100ms。
 
 ### 2. `--paste` —— GitHub 安全块
@@ -204,7 +204,7 @@ jobs:
 指到你自己的日志目录。
 
 **它花多少：** 一次 `npm ci` 加一次 `tsc`，项目零运行时依赖。本机真实的
-114MB / 30,736 行 / 14,905 步 Codex 会话解析耗时 **433ms**，产出 9,381 字节摘要。
+109 MiB（114,325,714 字节）/ 30,736 行 / 14,905 步 Codex 会话解析耗时 **< 500ms**，产出 9,381 字节摘要。
 
 这个仓库在自己的 PR 上跑这个 action ——
 见 [`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml)。
@@ -232,8 +232,8 @@ Claude Code 的 `Edit` 带 `old_string` + `new_string`，`Write` 带完整 `cont
 
 | 会话 | 大小 | 解析 | 输出 | 步数 | 覆盖判定 |
 |---|---|---|---|---|---|
-| Codex rollout | 109 MB | 379 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` —— 1,720 处 shell 改动，0 处 before-image |
-| Claude Code | 32 MB | 118 ms | 2.29 MB | 3,000 / 3,111 | `partial` —— 244 次编辑，127 次带 before-image |
+| Codex rollout | 109 MiB | ~0.4 s | 3.38 MiB | 4,016 / 14,905 | `diff-only` —— 1,720 处 shell 改动，0 处 before-image |
+| Claude Code | 31 MiB | ~0.13 s | 2.19 MiB | 3,000 / 3,111 | `partial` —— 244 次编辑，127 次带 before-image |
 
 第二条诚实规则：适配器无法分类的步会被**标注、计数并渲染**，绝不静默丢弃。Claude Code 会写入
 会话元数据记录（`file-history-snapshot` / `ai-title` / `permission-mode` 等），它们不承载
@@ -255,7 +255,7 @@ npx midflight-replay doctor <session.jsonl> --json   # steps / byKind / parseErr
 /usr/bin/time -l npx midflight-replay replay <session.jsonl> --out /tmp/r.html --json  # RSS
 ```
 
-那个 109MB 的文件峰值 RSS **273MB**（`286,736,384` 字节）。解析是逐行流式的，从不整文件读进内存。
+那个 109 MiB 的文件峰值 RSS **273MB**（`286,736,384` 字节）。解析是逐行流式的，从不整文件读进内存。
 
 ---
 

@@ -36,7 +36,7 @@ people instead of the median 300.
 
 | # | Row | Why P1 | Source |
 |---|---|---|---|
-| P1-1 | Keep a canonical HTML sample per host in `docs/` | The 8 competitors with stars all ship a screenshot or a recording above the fold. Ours now leads with the 109MB Codex replay + a real `demo.webm`; the copy in the README must keep matching `docs/demo/*` or it rots. | COMPETITIVE §3.5 |
+| P1-1 | Keep a canonical HTML sample per host in `docs/` | The 8 competitors with stars all ship a screenshot or a recording above the fold. Ours now leads with the 109 MiB Codex replay + a real `demo.webm`; the copy in the README must keep matching `docs/demo/*` or it rots. | COMPETITIVE §3.5 |
 | P1-2 | Land every user-visible fix in the CHANGELOG **and** in the README's numbers | `Agent-Blackbox` (76★, 31k-char README, 4 languages) has not pushed in 2 months. Being visibly alive is a differentiator in a category where the leaders are stalled. | COMPETITIVE §3.5 |
 
 ## P2 — queued, not started, deliberately

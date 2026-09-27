@@ -58,8 +58,23 @@ else
   done
   run git tag -a "v$VERSION" -m "$NAME $VERSION"
   run git push origin "v$VERSION"
+
+  # Ship one real 100+ MB replay as a downloadable asset. It is the cheapest
+  # possible refutation of "this is a mock" — open the file, no install needed.
+  run mkdir -p .release-assets
+  SAMPLE=$(ls -S "$HOME"/.codex/sessions/*/*/*/rollout-*.jsonl 2>/dev/null | head -1 || true)
+  if [ -n "$SAMPLE" ]; then
+    run node dist/cli.js replay "$SAMPLE" --out .release-assets/codex-109mb-report.html
+  else
+    echo "  no Codex session log found — releasing without the sample asset"
+  fi
+  ASSET_ARGS=()
+  if [ -f .release-assets/codex-109mb-report.html ]; then
+    ASSET_ARGS=(.release-assets/codex-109mb-report.html#codex-109mb-session-replay.html)
+  fi
   run gh release create "v$VERSION" --repo "$REPO" \
-    --title "v$VERSION — forensic replay for AI coding agents" --notes-file CHANGELOG.md
+    --title "v$VERSION — forensic replay for AI coding agents" --notes-file CHANGELOG.md \
+    ${ASSET_ARGS[@]+"${ASSET_ARGS[@]}"}
 fi
 
 echo "== npm =="

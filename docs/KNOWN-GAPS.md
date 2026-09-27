@@ -8,8 +8,8 @@ Reference sessions:
 
 | id | host | file | size |
 |---|---|---|---|
-| **C** | claude-code | `~/.claude/projects/-Users-zhangfengrui/88095c95-….jsonl` | 32 MB, 3,632 steps |
-| **X** | codex | `~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-01a0b440-….jsonl` | 110 MB, 14,905 steps |
+| **C** | claude-code | `~/.claude/projects/-Users-zhangfengrui/88095c95-….jsonl` | 31 MiB, 3,111 steps |
+| **X** | codex | `~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-01a0b440-….jsonl` | 109 MiB, 14,905 steps |
 
 ## 1. Not recovered: `~/.claude/file-history` before-images
 

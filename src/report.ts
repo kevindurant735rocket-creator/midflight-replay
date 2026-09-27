@@ -361,8 +361,12 @@ function header(){
       ' 步为会话元数据 / 未分类（已渲染）</span>':'')+
     '</div>';
   const pct=Math.round(c.ratio*100);
+  // The prose above is a verdict; cov-nums prints the three counts it came from, so a
+  // reader (or the README) never has to trust a claim they cannot check.
   hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+
-    ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div></div>';
+    ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
+    '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'">'+
+    '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b></div></div>';
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+
     (D.parseErrorCount>5?" 等 "+D.parseErrorCount+" 行":"")+'。原始行号已记录，可用 midflight doctor 查看完整原因。</div>';

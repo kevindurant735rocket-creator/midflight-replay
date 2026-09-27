@@ -59,10 +59,10 @@ node dist/cli.js doctor fixtures/codex-truncated.jsonl --json  # exit 1  (negati
 ## 1. Prove it on your own logs before anyone else sees it
 
 ```bash
-# Codex — the 109 MB session
+# Codex — the 109 MiB session
 node dist/cli.js replay ~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-*.jsonl \
   --out /tmp/mf-codex.html
-# → steps 3716/14905  coverage=diff-only
+# → steps 4016/14905  coverage=diff-only
 
 # Claude Code
 node dist/cli.js replay ~/.claude/projects/-Users-*/88095c95-*.jsonl --out /tmp/mf-claude.html

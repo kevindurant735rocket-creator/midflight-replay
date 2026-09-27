@@ -239,6 +239,22 @@ describe('AC-1/AC-4 report is one self-contained file', () => {
     { kind: 'tool_output', ts: 2, callId: 'c1', output: 'ok', truncated: false },
     { kind: 'assistant', ts: 3, text: 'done' },
   ]);
+  it('prints the three coverage counts the verdict was computed from', () => {
+    // The README quotes these numbers. If the report does not print them, the quote
+    // is unfalsifiable — which is the exact failure the honesty bar exists to stop.
+    const html = buildReport(sess([
+      tc('apply_patch', '{"old_string":"a","new_string":"b"}'),
+      tc('apply_patch', '{"input":"c"}'),
+      tc('exec_command', '{"cmd":"sed -i s/a/b/ f.ts"}'),
+      tc('exec_command', '{"cmd":"cat f.ts"}'),
+    ])).html;
+    // The DOM is built at runtime, so the report ships the block as a JS template.
+    // Assert the three counts are wired to the coverage object, in order.
+    expect(html).toContain('class="kv cov-nums"');
+    expect(html).toContain(
+      'class="kv cov-nums" data-edits="\'+c.edits+\'" data-shell="\'+c.shellMutations+\'" data-before="\'+c.withBefore+\'"',
+    );
+  });
   it('emits a complete standalone HTML document', () => {
     const r = buildReport(st);
     expect(r.html.startsWith('<!doctype html>') || r.html.startsWith('<!DOCTYPE html>')).toBe(true);
