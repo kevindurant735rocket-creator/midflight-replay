@@ -66,6 +66,15 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The release now proves its own tarball.** `npm publish` cannot be undone for 72
+  hours, and `prepublishOnly` runs in this checkout — it never sees the file layout
+  the registry will serve, so a package can pass every gate here and still install
+  broken. `scripts/verify-tarball.sh` packs the tarball, installs it into a clean
+  prefix, and runs every subcommand from the installed binary (`--version`, `doctor`,
+  `stats`, `replay`, `revert`, plus the behavioural check that `revert` rejects a file
+  that is not a report). The release **refuses to publish** if any of it fails. Run it
+  on its own with `npm run verify:tarball`.
+
 - **Edits near the end of a file produced diffs `git apply` could not place.** A
   trailing newline is a line terminator, not an empty final line, but the splitter
   kept the phantom — so every hunk within three lines of EOF carried a context line
