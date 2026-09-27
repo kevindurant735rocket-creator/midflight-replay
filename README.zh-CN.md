@@ -25,8 +25,16 @@
 </p>
 
 <p align="center">
+  <img src="docs/demo/demo.gif" alt="16 秒回放一条 32 MB 的真实 Claude Code 会话：时间轴拖动、上下文锯齿在压缩处下落、before-image diff 展开" width="820">
+</p>
+
+<p align="center"><sub>真东西，在动。这是一条 32 MB Claude Code 会话的 16 秒 —— 解析出 3,111 步、10 次第一手压缩事件。不是 mock 数据：文件由 <code>midflight replay</code> 对着 agent 自己写的会话日志跑出来。</sub></p>
+
+<p align="center">
   <img src="docs/images/replay-codex-109mb.png" alt="midflight 回放一条 109 MiB 的真实 Codex 会话" width="880">
 </p>
+
+<p align="center"><sub>本机真实 Codex 会话 —— 109 MiB 原始 JSONL、14,905 步 —— <strong>0.46 秒</strong>压成 3.4 MiB 单文件。画面里的代码就是真实会话日志。</sub></p>
 
 ---
 
@@ -112,6 +120,31 @@ midflight doctor <session.jsonl>
 
 工具本身不需要 `npm install` —— 运行时依赖是 0 个。仓库里的 devDependencies 只用于
 编译和测试源码。
+
+---
+
+## 六十秒，从 clone 到能看的回放
+
+```bash
+git clone https://github.com/kevindurant735rocket-creator/midflight-replay.git
+cd midflight-replay && npm install && bash scripts/demo-60s.sh --self
+```
+
+这就是整个 demo。它会自动找到你机器上最大的真实会话日志（`~/.codex` 或 `~/.claude`），
+回放它，然后把它干了什么打印出来：
+
+```
+  input        110 MiB of raw JSONL
+  output       3.4M, one file, no sibling assets
+  wall clock   454 ms
+ { "kept": 4016, "total": 14905, "coverage": "diff-only", "parseMs": 387 }
+
+done in 53 ms — open it:
+  open demo-60s.html
+```
+
+这些数字是**在跑它的机器上实测的**，不是从 benchmark 抄的。去掉 `--self` 就用内置
+fixture 跑 53 ms 那条路径，不需要任何会话日志。
 
 ---
 
@@ -317,6 +350,35 @@ midflight 押的是第三条。产物是一个**发给不在场的人**的文件
 —— 此刻正在大规模发生 —— 而且这个场景自带一个裂变位，那八个都没有：PR 评论。
 
 逐仓库的实测数据和可复跑的取证命令：[docs/COMPETITIVE.md](docs/COMPETITIVE.md)。
+
+---
+
+## 如果你是在 npm 上搜"agent replay"搜到这儿的
+
+你搜到两个包。下面的数字是**当场实测**的，取证命令在
+[docs/COMPETITIVE.md](docs/COMPETITIVE.md)：
+
+| | `agent-replay` | `flightrec` | **midflight-replay** |
+|---|---|---|---|
+| npm 版本 | 0.1.1 | 0.9.0 | **0.1.0** |
+| 最后发布 | 2026-02-16 | 2026-07-15 | 今天 |
+| 月下载 | 9 | 16 | — |
+| GitHub 仓库 | **404，已删或转私有** | **0★**，建仓和最后 push 同一天 | 公开，CI 全绿 |
+| 它是什么 | "DevTools for replaying AI agent sessions" | "A flight recorder for Codex sessions" | 一个**贴到 PR 上的文件** |
+| 源码 | 未公开 | 未公开 | **完整开源，MIT** |
+
+关键差别不是功能。是那两个包**装上也验证不了**：一个仓库根本访问不到，另一个
+仓库从建仓起就没过第二个提交。你读不了源码，提不了 issue，也没法确认它现在还能不能跑。
+
+所以这里的验收标准刻意选成最便宜、也最没法作假的那条：**装上它，做出一个东西。**
+
+```bash
+npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
+```
+
+这条命令要是能产出一个你直接发给"问你这个问题的人"的文件，比较就结束了。
+上面那台机器上，110 MiB 的 JSONL 在 0.46 秒内变成 3.4 MiB 的单文件 HTML，
+全程不碰网络。
 
 ---
 
