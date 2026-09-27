@@ -245,7 +245,8 @@ agent 动作 —— 所以 midflight 现在**认得出**它们，而不是丢进
 现在那条会话的 `unknownCount: 0`，全部 3,111 步分布是：1,040 工具调用、1,040 工具输出、
 424 assistant、415 reasoning、121 user、61 note、10 次压缩。**故意不读**的部分写在
 [`docs/KNOWN-GAPS.md`](docs/KNOWN-GAPS.md) —— 包括为什么不解码 `~/.claude/file-history`，
-以及证明这件事的命令。
+以及证明这件事的命令。接下来做什么、明确不做什么，排序在
+[`docs/BACKLOG.md`](docs/BACKLOG.md)。
 
 两行都可以自己复现：
 

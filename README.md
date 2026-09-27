@@ -275,7 +275,8 @@ The result on that session is `unknownCount: 0` across all 3,111 steps:
 1,040 tool calls, 1,040 tool outputs, 424 assistant, 415 reasoning, 121 user, 61 notes,
 10 compactions. What is *still* deliberately not read is written down in
 [`docs/KNOWN-GAPS.md`](docs/KNOWN-GAPS.md) — including why `~/.claude/file-history`
-is not decoded, with the command that proves it.
+is not decoded, with the command that proves it. What gets built next, and what
+deliberately does not, is ranked in [`docs/BACKLOG.md`](docs/BACKLOG.md).
 
 Reproduce both rows yourself:
 

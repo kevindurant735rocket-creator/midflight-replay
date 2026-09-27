@@ -13,7 +13,7 @@ them into a single scrubbable HTML file.
 
 - **`replay`** — one self-contained HTML file: no server, no CDN, no build, no
   network request at any point after generation. Verified in a real browser:
-  `60 passed, 0 failed` assertions, including "no requests fired during
+  `58 passed, 0 failed` assertions, including "no requests fired during
   interaction".
 - **`replay --paste`** — a GitHub-safe digest. Only `details / summary / table /
   pre / code / div`; machine-asserted zero `<script>`, zero `<style>`, zero
@@ -33,6 +33,16 @@ them into a single scrubbable HTML file.
   which rules fired and how many times, never the value. `--no-redact` opts out.
 - **CI** on Node 20 and 22, running `doctor` against both a valid and a
   deliberately corrupted fixture.
+
+### Also enforced in CI
+
+- **Browser acceptance is now a CI job** (`browser` in `.github/workflows/ci.yml`),
+  not a local claim: it installs Chromium and asserts 58 assertions per run,
+  including "no network request fired during interaction". The zero-network
+  property is the product, so it gets a job instead of a paragraph.
+- **Both binaries are published**: `midflight` and `midflight-replay`, so
+  `npx midflight-replay …` works whether you remember the short name or the
+  package name.
 
 ### Measured on real logs
 

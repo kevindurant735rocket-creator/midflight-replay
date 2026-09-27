@@ -43,3 +43,30 @@ jobs:
             exit 1
           fi
           echo "truncated session correctly rejected with non-zero exit"
+
+  # The headline claim is "one file, no server, no CDN, no network request".
+  # That is only provable in a real browser, so it gets its own job instead of
+  # being asserted in prose. Runs once (node 22) to keep CI minutes sane.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: install dev deps
+        run: npm ci
+
+      - name: install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: build
+        run: npm run build
+
+      - name: browser acceptance (zero network requests, scrub, diffs)
+        run: |
+          node dist/cli.js replay fixtures/codex-mini.jsonl --out /tmp/mf-codex.html
+          node dist/cli.js replay fixtures/claude-mini.jsonl --out /tmp/mf-claude.html
+          node scripts/browser-check.mjs /tmp/mf-codex.html /tmp/mf-claude.html

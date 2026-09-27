@@ -83,7 +83,7 @@ tool tells the truth about *your* log, not about the one in the README.
 ## 2. Browser assertions (the "zero network" claim is only worth what it is tested against)
 
 ```bash
-node scripts/browser-check.mjs /tmp/mf-codex.html /tmp/mf-claude.html   # 60 passed, 0 failed
+node scripts/browser-check.mjs /tmp/mf-codex.html /tmp/mf-claude.html   # 58 passed, 0 failed
 node scripts/browser-check.mjs docs/demo-claude.html docs/demo-codex.html  # 58 passed, 0 failed
 ```
 
@@ -122,7 +122,7 @@ gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md
 ## 5. npm
 
 ```bash
-npm pack --dry-run           # expect: 49.5 kB, 29 files, CHANGELOG.md + README.md + LICENSE present
+npm pack --dry-run           # expect: 49.9 kB, 29 files, CHANGELOG.md + README.md + LICENSE present
 npm whoami                   # must be an account that owns the `midflight` name
 npm publish --access public
 npm view midflight version   # must print 0.1.0
