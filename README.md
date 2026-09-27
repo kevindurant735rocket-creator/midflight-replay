@@ -199,6 +199,53 @@ record **by line number** and exits non-zero.
 
 ---
 
+## FAQ
+
+**Does it touch my repository?** No. It reads one JSONL file you name and writes one
+HTML file you name. It never reads your git history, never runs git, never writes
+inside a project directory.
+
+**Does my session leave my machine?** No. There is no network call at any code path —
+a browser assertion checks for outbound requests during interaction and comes back
+zero. There is no server, no telemetry, no database, no crash reporting.
+
+**Could it leak my API keys?** Redaction runs before anything reaches the report and
+covers OpenAI/Anthropic keys, GitHub PATs, Slack tokens, AWS and Google keys, PEM
+private-key blocks, bearer headers, JWTs, `secret = ...` assignments, emails, and
+your home directory. The report says which rules fired and how many times, never the
+value. `--no-redact` turns it off.
+
+**Why does the coverage bar say `diff-only` on my Codex session?** Because that is
+the truth about the log. Codex records `cmd` and `path` arguments; across 3,684
+function calls in the session I measured, `old_string` and `patch` never appear. The
+file *was* changed, but the previous content was never written down, so a diff
+cannot be reconstructed. Claude Code's `Edit` steps do record `old_string`, which is
+why those sessions land on `full` or `partial`.
+
+**Do I have to instrument my agent first?** No. midflight is forensic, not invasive.
+It reads the log the agent already writes. There is no hook, no wrapper, no config
+change — which also means it can only report what the log contains, and never claims
+more than that.
+
+**Why are there two outputs?** GitHub strips `<script>` and `<style>` from pasted HTML.
+An interactive report cannot survive that, so `--paste` emits a digest built only from
+whitelisted tags, verified by test to contain no script, no style, no `on*=` handler,
+and no external reference.
+
+**Why is the npm package called `midflight` but this repo `agent-replay`?**
+`agent-replay` is taken on npm (an unrelated time-travel tool) and this repo keeps
+the name that describes the use case. The `midflight` package name was free at the
+time of writing and the binary is `midflight`.
+
+**Does it work on a session that is still running?** You can, but you get a snapshot
+of the file as it is when you read it. midflight is built for sessions that already
+ended — a PR that is already open.
+
+**What if it doesn't recognise my agent's format?** `midflight doctor` prints the
+first bad record by line number and exits non-zero. If the format is new, open an
+issue with a redacted 20-line sample and a step-kind histogram — adapters get added
+from measured data.
+
 ## Why this and not the other eight tools
 
 There are eight existing projects doing "agent session replay" (measured: 388★,
