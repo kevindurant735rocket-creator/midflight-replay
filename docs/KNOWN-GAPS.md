@@ -110,3 +110,26 @@ files are un-excluded and pushed.** That is a two-command job, and until it happ
 this project has no claim to a green build. The local substitute is the three gates
 in `scripts/release.sh`, which do run on every push and are what the release gate
 actually reads.
+
+## 7. What `postmortem` does not know
+
+It counts. It does not explain, and it has no model in the loop.
+
+- **A loop is a fingerprint, not a diagnosis.** Three identical calls in a row is
+  what a stuck agent looks like *and* what a deliberate retry looks like. The tool
+  reports the count and the exact arguments and leaves the judgement to whoever
+  was there. It will never say "the agent was confused".
+- **"Consecutive" means consecutive among tool calls.** Assistant prose, reasoning
+  and results between the calls do not break the run, because a stuck agent keeps
+  narrating while it retries. A reader who wants the stricter reading has the step
+  numbers in the evidence line.
+- **Args are compared as logged, up to 400 characters.** Two calls that differ only
+  past that point are reported as one loop. The bar is on purpose: a false split is
+  a finding the reader has to disprove, and that is the expensive direction.
+- **Repeated edits count edits, not content.** Editing a file three times in a row
+  can be careful incremental work. The number is the fact; the verdict is yours.
+- **Context pressure is measured against the host's own numbers, which do not always
+  reconcile.** A real Codex session reports input above the window it just declared
+  (322,441 tokens against a 243,200-token window). When that happens the tool
+  prints the tokens and says the ratio is a floor, instead of printing a
+  percentage above 100% as though it were a measurement.

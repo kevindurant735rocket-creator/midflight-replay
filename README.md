@@ -366,6 +366,7 @@ and how many substitutions happened — as counts, never as values.
 midflight replay <session.jsonl> [options]   build a self-contained replay
 midflight doctor <session.jsonl> [--json]    parse and report health; exit 1 on bad input
 midflight stats  <session.jsonl> [--json]    parse and print step counts
+midflight postmortem <session.jsonl> [--json] count loops, repeated edits, context pressure
 midflight revert  <report.html> --step <n>    print the patch that undoes step n
 midflight revert  <report.html> --list       show which steps are reversible
 midflight redact                            run the redactor over stdin
@@ -383,6 +384,36 @@ midflight --version                          print the installed version
 
 `doctor` is the one to run in CI or on a suspect file. It reports the first bad
 record **by line number** and exits non-zero.
+
+### `postmortem` — what the session did to itself
+
+Counts, over the steps the host logged: the same call repeated with byte-identical
+arguments, files edited more than twice, and context pressure. It exits 0 even when
+it finds something — a loop in your session is a fact, not a parse error.
+
+```
+$ midflight postmortem ~/.codex/sessions/2026/09/23/rollout-....jsonl
+postmortem 01a0b440-b440-72a0-95c1-68f4812084c2
+
+[loop] the same call ran 9 times in a row with identical arguments
+  - steps 10338-10370: exec_command {"cmd":"echo poll; ps aux | grep ego-server-name | grep -v grep | head -5","yield_time_ms":15000.0}
+  - 9 consecutive calls, 0 arguments changed between the first and the last
+
+[near-full-context] context hit 322,441 tokens against a 243,200-token window
+  - the host reported input ABOVE its own reported window; treat the ratio as a floor, not a measurement
+  - 245 of 4917 usage records at or above 85.0%
+  - 3 records where input tokens exceeded the reported window
+  - 22 first-hand compaction events
+
+14 findings. Counts over logged steps only.
+```
+
+That is a real 110 MiB session from this machine, not a fixture: 14 findings, the
+worst being a poll that ran nine times with the arguments unchanged while the agent
+kept talking. Thresholds are named constants in [`src/postmortem.ts`](src/postmortem.ts)
+(3 identical calls, 3 edits to one file, 85% of the window) so a reader can argue with
+the bar instead of trusting it. What it does not claim is in
+[KNOWN-GAPS §7](docs/KNOWN-GAPS.md).
 
 ### `revert` — the report's inverse
 
@@ -519,8 +550,8 @@ on the machine quoted above, and the command never touches the network.
 
 ## Roadmap
 
-Deliberately small. Eight things shipped; the next one is the one with evidence
-behind it.
+Deliberately small. Nine things shipped; there is no eleventh item queued up to
+look busy.
 
 - [x] Codex + Claude Code adapters, auto-detected
 - [x] dual-axis timeline with clickable context composition
@@ -530,8 +561,8 @@ behind it.
 - [x] default-on redaction, zero network
 - [x] `doctor` with line-accurate failure reporting
 - [x] `revert` — undo a step from the report, `git apply -R`-able
-- [ ] **postmortem detection** — flag loops, repeated edits, and near-full context
-- [ ] more adapters, as they show up in real logs
+- [x] `postmortem` — loops, repeated edits, context pressure, counted from the log
+- [ ] more adapters, as they show up in real logs — none are queued speculatively
 
 Not planned, on purpose: a server, an account, a database, a hosted dashboard, a
 re-run/fork feature. Each one needs a network call, and the network call is the
@@ -544,7 +575,7 @@ thing this project exists to not do.
 ```bash
 npm install          # devDeps only: typescript, vitest, playwright
 npm run build        # tsc -> dist/
-npm test             # 111 unit tests
+npm test             # 127 unit tests
 node scripts/browser-check.mjs out.html out2.html   # 60 browser assertions
 ```
 

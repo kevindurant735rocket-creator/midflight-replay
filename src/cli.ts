@@ -7,6 +7,7 @@ import { buildReport } from './report.js';
 import { buildPaste, assertPasteSafe } from './paste.js';
 import { writeFileSync } from 'node:fs';
 import { readVersion } from './version.js';
+import { postmortem, renderPostmortem } from './postmortem.js';
 
 const USAGE = `midflight — forensic replay for AI coding agents
 
@@ -14,6 +15,7 @@ Usage
   midflight replay <session.jsonl> [options]   build a self-contained replay
   midflight doctor <session.jsonl> [--json]    parse a session and report health; exit 1 on bad input
   midflight stats  <session.jsonl> [--json]    parse and print step counts
+  midflight postmortem <session.jsonl> [--json] flag loops, repeated edits, and context pressure
   midflight revert  <report.html> --step <n> [--out patch.diff]
   midflight revert  <report.html> --list        show which steps are reversible
                                                 prints a reverse-appliable patch; never
@@ -103,6 +105,28 @@ function cmdStats(path: string, json: boolean): Promise<number> {
     const st = statsOf(session, countLines(path), Date.now() - t0);
     if (json) console.log(JSON.stringify({ byKind: st.byKind, steps: session.steps.length, errors: st.errorLines }, null, 2));
     else for (const [k, v] of Object.entries(st.byKind).sort((a, b) => b[1] - a[1])) console.log(`${String(v).padStart(6)}  ${k}`);
+    return 0;
+  })();
+}
+
+/**
+ * Postmortem reads the log and counts. It never exits non-zero for a finding:
+ * a loop in someone's session is a fact about their session, not a parse error,
+ * and a tool that exits 1 on a finding gets its exit code ignored by CI wrappers.
+ */
+function cmdPostmortem(path: string, json: boolean): Promise<number> {
+  return (async () => {
+    if (!exists(path)) {
+      console.error(`error: not a file: ${path}`);
+      return 2;
+    }
+    const session = await parseSession(path, { homeDir: process.env.HOME });
+    const findings = postmortem(session.steps);
+    if (json) {
+      console.log(JSON.stringify({ sessionId: session.meta.sessionId, findings }, null, 2));
+    } else {
+      process.stdout.write(renderPostmortem(findings, session.meta.sessionId));
+    }
     return 0;
   })();
 }
@@ -297,6 +321,8 @@ async function main(): Promise<number> {
       }
       case 'stats':
         return await cmdStats(rest[0] ?? '', json);
+      case 'postmortem':
+        return await cmdPostmortem(rest[0] ?? '', json);
       case 'revert':
         return await cmdRevert(argv.slice(1));
       case 'redact': {

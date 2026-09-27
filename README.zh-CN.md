@@ -331,6 +331,7 @@ npx midflight-replay doctor <session.jsonl> --json   # steps / byKind / parseErr
 midflight replay <session.jsonl> [options]   生成自包含回放
 midflight doctor <session.jsonl> [--json]    解析并体检；输入有问题时 exit 1
 midflight stats  <session.jsonl> [--json]    解析并打印步数统计
+midflight postmortem <session.jsonl> [--json] 数循环、反复改同一处、上下文压力
 midflight revert  <report.html> --step <n>    打印撤销第 n 步所需的补丁
 midflight revert  <report.html> --list       列出哪些步骤可逆放
 midflight redact                            对 stdin 跑脱敏
@@ -418,7 +419,7 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 
 ## 路线图
 
-刻意做小。已发货 8 项，接下来的那一项背后有实测证据支撑。
+刻意做小。已发货 9 项，没有第 11 项排在后面充数。
 
 - [x] Codex + Claude Code 适配器，自动识别
 - [x] 双轴时间轴 + 可点击的上下文构成
@@ -428,8 +429,8 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 - [x] 默认脱敏、零网络
 - [x] `doctor` 行级失败定位
 - [x] `revert` —— 从报告里撤一步，可 `git apply -R`
-- [ ] **事后解剖检测** —— 标出循环、反复改同一处、上下文将满
-- [ ] 更多适配器，等真实日志里出现再加
+- [x] `postmortem` —— 循环、反复改同一处、上下文压力，全部从日志数出来
+- [ ] 更多适配器，等真实日志里出现再加 —— 不预先排任何一家
 
 **刻意不做**：服务端、账号、数据库、托管看板、重跑/分叉。每一个都需要一次网络调用，
 而"不发网络请求"正是这个项目存在的理由。

@@ -8,6 +8,33 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`postmortem` — counts loops, repeated edits, and context pressure.** The last
+  thing the roadmap promised, now shipped and measured on a real session.
+  `midflight postmortem <session.jsonl> [--json]`, and it exits 0 even when it finds
+  something: a loop in your session is a fact, not a parse error.
+  - **Loops** — the same tool with byte-identical arguments, `LOOP_RUN_MIN` (3)
+    times in a row among tool calls. On a real 110 MiB Codex session from this
+    machine: 14 findings, the worst a poll that ran **9 times** with the arguments
+    unchanged.
+  - **Repeated edits** — a file edited `REPEAT_EDIT_MIN` (3) or more times, with the
+    share of the session by step count. `file_event` steps count; deletes do not,
+    because a file removed three times is not churn.
+  - **Near-full context** — peak occupancy at or above `NEAR_FULL_FRACTION` (0.85)
+    of the reported window, plus first-hand compaction events.
+  - 16 tests. Thresholds are exported constants, not inline numbers, so a reader can
+    argue with the bar instead of trusting it.
+
+- **`postmortem` found a bug in itself, before anyone else could.** Occupancy was
+  first computed as `input + cachedInput`, which double counts (cached tokens are a
+  subset of input on both hosts) and printed a real session at "263.6% of the
+  window". Fixed to `input` alone. When input exceeds the host's own declared
+  window — a real session reports 322,441 tokens against a 243,200-token window —
+  the tool now prints the raw tokens and marks the ratio as a floor instead of
+  printing a percentage above 100% as though it were a measurement. Two tests lock
+  both halves of that.
+
+### Added
+
 - **`midflight revert` — the report's inverse.** Given a report and a step index, it
   prints one unified diff that undoes that step, ready for `git apply -R`:
 
