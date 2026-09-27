@@ -25,10 +25,42 @@
 </p>
 
 <p align="center">
+  <img src="docs/demo/demo.gif" alt="16-second scrub-through of a real 32 MB Claude Code session: the timeline cursor moves, the context sawtooth drops on a compaction, a before-image diff opens" width="820">
+</p>
+
+<p align="center"><sub>The real thing, moving. 16 seconds of a 32 MB Claude Code session &mdash; 3,111 parsed steps, 10 first-hand compaction events. No mock data: the file was produced by <code>midflight replay</code> against a session log the agent wrote about its own work.</sub></p>
+
+<p align="center">
   <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109 MiB Codex session: 14,905 steps, 30,736 log lines, opened in under half a second" width="880">
 </p>
 
-<p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,905 parsed steps &mdash; opened in under half a second. The code in the picture is the actual session log, not a mock.</sub></p>
+<p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,905 parsed steps &mdash; turned into a 3.4 MiB single file in <strong>0.46 s</strong>. The code in the picture is the actual session log, not a mock.</sub></p>
+
+---
+
+## Sixty seconds, start to finish
+
+```bash
+git clone https://github.com/kevindurant735rocket-creator/midflight-replay.git
+cd midflight-replay && npm install && bash scripts/demo-60s.sh --self
+```
+
+That is the whole demo. It finds the largest real session log on your machine
+(`~/.codex` or `~/.claude`), replays it, and prints what it did:
+
+```
+  input        110 MiB of raw JSONL
+  output       3.4M, one file, no sibling assets
+  wall clock   454 ms
+ { "kept": 4016, "total": 14905, "coverage": "diff-only", "parseMs": 387 }
+
+done in 53 ms — open it:
+  open demo-60s.html
+```
+
+Those are measured on the machine that ran it, not copied from a benchmark. Drop
+`--self` to run against the bundled fixture instead if you want the 53 ms path with
+no session logs present.
 
 ---
 
@@ -411,6 +443,38 @@ none of the eight have: the PR comment.
 
 Full measurements, repo-by-repo, with the commands to re-run them:
 [docs/COMPETITIVE.md](docs/COMPETITIVE.md).
+
+---
+
+## If you searched npm for "agent replay"
+
+You found two packages. Both are measured live, right now, with the commands in
+[docs/COMPETITIVE.md](docs/COMPETITIVE.md):
+
+| | `agent-replay` | `flightrec` | **midflight-replay** |
+|---|---|---|---|
+| npm version | 0.1.1 | 0.9.0 | **0.1.0** |
+| last publish | 2026-02-16 | 2026-07-15 | today |
+| downloads / month | 9 | 16 | — |
+| GitHub repo | **404, deleted or private** | **0★**, created and last pushed the same day | public, CI green |
+| what it is | "DevTools for replaying AI agent sessions" | "A flight recorder for Codex sessions" | a **file you attach to a PR** |
+| source | not published | not published | **full source, MIT** |
+
+The distinction that matters is not features. It is that neither of those is
+installable-and-verifiable: one has no reachable repository, the other has a
+repository that has never had a second commit. You cannot read either one, you
+cannot file an issue against it, and you cannot check whether it still runs.
+
+So the test here is deliberately the cheapest one that cannot be faked: **install
+it and make something.**
+
+```bash
+npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
+```
+
+If that produces a file you can email to the person who asked you the question,
+the comparison is over. 110 MiB of JSONL becomes a 3.4 MiB single HTML in 0.46 s
+on the machine quoted above, and the command never touches the network.
 
 ---
 
