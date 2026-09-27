@@ -64,7 +64,17 @@ const clip = (s: string, n: number): string => (s.length > n ? s.slice(0, n) : s
 export function capStep(s: ReplayStep, n: number): ReplayStep {
   if (s.kind === 'user' || s.kind === 'assistant') return { ...s, text: clip(s.text, n) };
   if (s.kind === 'reasoning') return { ...s, summary: clip(s.summary, n) };
-  if (s.kind === 'tool_call') return { ...s, args: clip(String(s.args), n), rawArgs: clip(s.rawArgs, n) };
+  if (s.kind === 'tool_call') {
+    // beforeImage is a whole file's worth of text; without this cap one recovered backup could
+    // eat the report budget on its own. Truncating it still yields a real (partial) diff.
+    return {
+      ...s,
+      args: clip(String(s.args), n),
+      rawArgs: clip(s.rawArgs, n),
+      ...(s.beforeImage === undefined ? {} : { beforeImage: clip(s.beforeImage, n) }),
+      ...(s.newText === undefined ? {} : { newText: clip(s.newText, n) }),
+    };
+  }
   if (s.kind === 'tool_output') return { ...s, output: clip(s.output, n) };
   if (s.kind === 'compaction') return { ...s, summary: clip(s.summary, n) };
   if (s.kind === 'note') return { ...s, text: clip(s.text, n) };

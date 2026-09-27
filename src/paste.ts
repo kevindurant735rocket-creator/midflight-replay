@@ -101,7 +101,7 @@ export function buildPaste(session: Session, opts: PasteOptions = {}): PasteResu
     e.n += 1;
     if (isEditTool(s.name)) {
       e.edits += 1;
-      if (diffFromArgs(s.rawArgs)?.reconstructable) e.recon += 1;
+      if (diffFromArgs(s.rawArgs, s.beforeImage, s.newText)?.reconstructable) e.recon += 1;
     }
     census.set(s.name, e);
   }

@@ -1,5 +1,16 @@
 import type { ParseError, ReplayStep, Session, SessionMeta } from '../types.js';
 import { redact, type RedactOptions } from '../redact.js';
+import {
+  indexFileHistory,
+  planJoins,
+  attachBackups,
+  deltaFromRecord,
+  isLoggedEdit,
+  filePathOf,
+  type DeltaRecord,
+  type LoggedEdit,
+  type FileHistoryStats,
+} from '../filehistory.js';
 
 export interface ClaudeParseOptions extends RedactOptions {
   maxOutputChars?: number;
@@ -7,6 +18,8 @@ export interface ClaudeParseOptions extends RedactOptions {
 }
 
 const DEFAULTS = { maxOutputChars: 20_000, maxArgsChars: 20_000 };
+
+type ToolCallStep = Extract<ReplayStep, { kind: 'tool_call' }>;
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : v == null ? '' : JSON.stringify(v);
@@ -17,6 +30,26 @@ function num(v: unknown): number | undefined {
 function cap(s: string, n: number): { text: string; truncated: boolean } {
   return s.length > n ? { text: s.slice(0, n), truncated: true } : { text: s, truncated: false };
 }
+/** The text an edit applied, read off the unredacted input and redacted by the caller. */
+function appliedTextOf(input: unknown): string | undefined {
+  const a = input && typeof input === 'object' ? (input as Record<string, unknown>) : null;
+  if (!a) return undefined;
+  for (const k of ['new_string', 'newText', 'content']) {
+    if (typeof a[k] === 'string' && a[k] !== '') return a[k] as string;
+  }
+  return undefined;
+}
+
+/** The log's own before-image, if it wrote one. Read off the UNREDACTED tool input and used
+ *  only for the agreement cross-check; it is never attached to a step. */
+function inlineOldOf(input: unknown): string | undefined {
+  const a = input && typeof input === 'object' ? (input as Record<string, unknown>) : null;
+  if (!a) return undefined;
+  if (typeof a.old_string === 'string') return a.old_string;
+  if (typeof a.oldText === 'string') return a.oldText;
+  return undefined;
+}
+
 function blocksOf(msg: any): any[] {
   if (!msg || typeof msg !== 'object') return [];
   const c = msg.content;
@@ -43,6 +76,8 @@ export async function parseClaude(
   let lineNo = 0;
   let lastTs = 0;
   let sawSession = false;
+  const edits: LoggedEdit[] = [];
+  const deltas: DeltaRecord[] = [];
 
   for await (const rawLine of lines) {
     lineNo += 1;
@@ -100,14 +135,30 @@ export async function parseClaude(
             } else if (bt === 'tool_use') {
               const rawArgs = str(b.input);
               const c = cap(rawArgs, o.maxArgsChars);
-              steps.push({
+              const step: ToolCallStep = {
                 kind: 'tool_call',
                 ts,
                 callId: str(b.id) || `line${lineNo}`,
                 name: str(b.name) || 'unknown_tool',
                 args: redactOn(c.text),
                 rawArgs: redactOn(c.text),
-              });
+              };
+              steps.push(step);
+              // The host's file-history delta names the message it fired on, so every edit is
+              // kept with that identity. filePath comes from the UNREDACTED args: it is only
+              // ever compared, never rendered, and redaction rewrites /Users/<name> paths.
+              const nt = appliedTextOf(b.input);
+              if (nt != null) step.newText = redactOn(nt);
+              if (isLoggedEdit(step.name, b.input)) {
+                const fp = filePathOf(b.input);
+                const lo = inlineOldOf(b.input);
+                edits.push({
+                  step,
+                  ...(typeof obj.uuid === 'string' ? { uuid: obj.uuid } : {}),
+                  ...(fp ? { filePath: fp } : {}),
+                  ...(lo == null ? {} : { logOldRaw: lo }),
+                });
+              }
             } else if (bt === 'tool_result') {
               let body: string;
               if (typeof b.content === 'string') body = b.content;
@@ -204,12 +255,15 @@ export async function parseClaude(
           if (!meta.title && typeof t === 'string' && t.trim()) meta.title = t.trim();
           break;
         }
-        // file-history-delta points at a before-image backup under
-        // ~/.claude/file-history/<session>/. Verified on this session: all 12 distinct
-        // trackingPaths are already covered by an Edit/Write tool_use whose args carry
-        // old_string, so reading the backup would add no reversible diff that is not
-        // already there. It is therefore chrome, not a step. (See docs/KNOWN-GAPS.md.)
-        case 'file-history-delta':
+        // NOT chrome. Measured over every session on this machine with a backup directory
+        // (40 sessions, 290 records): 274/274 deltas that named a backup resolved to an
+        // assistant uuid on this machine, and every named backup existed on disk. This record
+        // is the index that turns the backup store into a real before-image (P0-1).
+        case 'file-history-delta': {
+          const d = deltaFromRecord(obj, ts);
+          if (d) deltas.push(d);
+          break;
+        }
         case 'mode':
         case 'permission-mode':
         case 'last-prompt':
@@ -228,9 +282,38 @@ export async function parseClaude(
     }
   }
 
+  // P0-1: recover before-images from the host's own backup store. Runs after the stream
+  // closes because the store is keyed by sessionId, which is only known once the log is read.
+  const fhIndex = indexFileHistory(meta.sessionId, o.homeDir);
+  const { joins, untracked, unresolved } = planJoins(deltas, edits);
+  const { stats, attached } = attachBackups(joins, fhIndex, { redact: redactOn, redactEnabled: opts.enabled !== false });
+  // attachBackups already redacted the recovered bytes; redacting twice is safe but is one
+  // more place for the two paths to drift apart.
+  for (const [step, hit] of attached) {
+    step.beforeImage = hit.before;
+    step.beforeImageFrom = hit.source;
+  }
+  // Every shortfall is stated. A delta that resolved to nothing is as much a gap as one the
+  // host declined to track, and the reader is the one who has to decide which matters.
+  stats.untracked = untracked;
+  const gaps: string[] = [];
+  if (untracked > 0) gaps.push(`${untracked} 处宿主未纳入备份范围`);
+  if (unresolved > 0) gaps.push(`${unresolved} 处备份在日志里找不到对应编辑`);
+  if (gaps.length) stats.reason = `${stats.reason || ''}${gaps.join('，')}。`.trim();
+  if (stats.joins > 0) {
+    warnings.push(
+      `${stats.joins} 处编辑已匹配 ~/.claude/file-history 备份（${stats.agree} 处与日志内联的 old_string 一致` +
+        `${stats.recovered ? `，${stats.recovered} 处日志未写 old_string、只能由备份还原` : ''}` +
+        `${stats.disagree ? `，${stats.disagree} 处两者矛盾` : ''}${gaps.length ? `；${gaps.join('，')}` : ''}）`,
+    );
+  } else if (deltas.length > 0) {
+    warnings.push(`file-history: ${deltas.length} 条 delta 未匹配到任何编辑（${gaps.join('，') || '无备份名'}）`);
+  }
+
   if (!sawSession) warnings.push('no sessionId seen; session header is inferred');
   if (parseErrors.length) warnings.push(`${parseErrors.length} line(s) failed to parse`);
   steps.sort((a, b) => a.ts - b.ts);
   const unknownCount = steps.filter((s) => s.kind === 'unknown').length;
-  return { meta, steps, parseErrors, warnings, unknownCount, truncated: parseErrors.length > 0 };
+  const fileHistory: FileHistoryStats | undefined = deltas.length > 0 || fhIndex.backups > 0 ? stats : undefined;
+  return { meta, steps, parseErrors, warnings, unknownCount, truncated: parseErrors.length > 0, ...(fileHistory ? { fileHistory } : {}) };
 }

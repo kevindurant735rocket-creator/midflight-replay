@@ -11,33 +11,46 @@ Reference sessions:
 | **C** | claude-code | `~/.claude/projects/-Users-zhangfengrui/88095c95-….jsonl` | 31 MiB, 3,111 steps |
 | **X** | codex | `~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-01a0b440-….jsonl` | 109 MiB, 14,905 steps |
 
-## 1. Not recovered: `~/.claude/file-history` before-images
+## 1. Recovered: `~/.claude/file-history` before-images
 
 **What exists.** Claude Code writes a before-image backup for every file it edits, under
 `~/.claude/file-history/<sessionId>/<hash>@v<n>`, and points at it from a
-`file-history-delta` record in the transcript. On session **C** that is 71 backup files
-(1.7 MB), and `delta.messageId` matched an `assistant` record's `uuid` **13 / 13** — the
-join is exact, not heuristic.
+`file-history-delta` record in the transcript that names the message the edit fired on.
 
-**Why midflight does not read it.** The 12 distinct `trackingPath` values in those deltas
-are *all* already covered by an `Edit`/`Write` tool_use whose arguments already carry
-`old_string`. Reading the backup would therefore add **0** reversible diffs that the
-transcript does not already support. The records are classified as chrome, not as steps.
+**What midflight now does.** `src/filehistory.ts` reads that store and pairs each delta
+with the edit it belongs to. The join is the transcript itself, not a heuristic:
+`delta.messageId` → the `assistant` record's `uuid` → the `tool_use` in that message whose
+`file_path` equals `backup.realParentDir + basename(delta.trackingPath)`. Two rules, in
+order: paths agree → use the match; the message held exactly one edit and one delta →
+use it and say so (`via: 'sole'`); anything else is left unpaired, because a wrong
+before-image is worse than a missing one.
 
-**How it was measured.**
+**Measured across every local session that has a backup directory** (40 sessions,
+290 deltas): `messageId` → assistant `uuid` resolved 274/274; the derived path matched
+25/25; the named backup file existed on disk 274/274. The 16 deltas that name no backup
+are all under `/tmp` and are reported as `untracked`, never guessed.
 
-```sh
-node -e 'const fs=require("fs");const f=process.argv[1];let d=0;const s=new Set();
-for(const l of fs.readFileSync(f,"utf8").split("\n")){try{const o=JSON.parse(l);
-if(o.type==="file-history-delta"){d++;s.add(o.trackingPath)}}catch{}}
-console.log("deltas",d,"paths",s.size)' \
-  ~/.claude/projects/-Users-zhangfengrui/88095c95-7e96-4d89-9acf-c000e4d4c86a.jsonl
-ls ~/.claude/file-history/88095c95-7e96-4d89-9acf-c000e4d4c86a | wc -l   # → 71
+**The rescue path is proven, not assumed.** `old_string` was stripped from all 211
+`tool_use` blocks of session `671a21ed` and the stripped transcript re-parsed:
+
+```
+backups=113  joined=55  agree=0  disagree=0  recovered=55
 ```
 
-**When it would matter.** A Claude session whose transcript was rotated or truncated
-while the backups survived, or a host that edits without logging `old_string`. That is a
-real scenario, and it is a planned feature, not a permanent "no".
+That session had **zero** reversible edits before this feature. Now 55 of them render a
+real diff (1,332 `del` lines, 569 `add` lines), each badged
+`before-image 来自 file-history 备份 · 可逆放（非日志内联）`.
+
+**Two things are still not done, on purpose.** The per-file read ceiling is 4 MiB — a
+larger backup is counted and reported, never silently dropped. And a backup that vanished
+from disk between the session and the replay is counted as `missing`, not reconstructed.
+
+**How to re-run the measurement.**
+
+```sh
+node dist/cli.js doctor ~/.claude/projects/-Users-zhangfengrui/671a21ed-b847-4612-8268-21be1f89b0b5.jsonl --json
+# fileHistory: {"backups":113,"joins":55,"agree":0,"disagree":0,"recovered":55,...}
+```
 
 ## 2. Not reversible: edits carried by shell commands
 

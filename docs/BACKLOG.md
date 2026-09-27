@@ -29,8 +29,8 @@ people instead of the median 300.
 
 | # | Row | Why it is P0 (measured) | Source |
 |---|---|---|---|
-| P0-1 | Read Claude Code `~/.claude/file-history` before-images | 71 backups on session C, `delta.messageId` ↔ `assistant.uuid` joins 13/13. Today it adds 0 diffs *for that session*, but any rotated/truncated transcript, or any host that edits without `old_string`, is unrecoverable. | KNOWN-GAPS §1 |
-| P0-2 | `midflight revert` | Blocked on P0-1 by design. The report is currently read-only, which is correct; the inverse is the natural next capability once before-images are real. | KNOWN-GAPS §5 |
+| P0-1 | ~~Read Claude Code `~/.claude/file-history` before-images~~ | **DONE 2026-09-27.** `src/filehistory.ts` joins `delta.messageId`→`assistant.uuid`→`tool_use.file_path`. 274/274 messageIds resolve across 40 sessions; 25/25 paths match. Rescue proven by stripping `old_string` from session 671a21ed: `backups=113 joined=55 recovered=55` (that session had 0 reversible edits before). 55 edits now render real del/add, badged as backup-sourced. | closed |
+| P0-2 | `midflight revert` | **Unblocked by P0-1.** The before-image source is now real and, for backup-joined edits, whole-file. The report is still read-only by design, which is correct; the inverse is the next capability. Note the ceiling: a revert is only as good as the before-image, so backup-only edits (no inline `old_string`) are the ones worth gating hardest. | KNOWN-GAPS §5 |
 
 ## P1 — the two facts the competitive scan says decide this project's ceiling
 

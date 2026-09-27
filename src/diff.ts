@@ -75,10 +75,13 @@ function lcsDiff(a: string[], b: string[]): DiffLine[] {
 
 /**
  * @param rawArgs the (already redacted) tool argument string
- * @returns a diff when the log actually carried a before-image, otherwise `reconstructable:false`
- *          and the applied text as plain added lines. Never invents a `del` line.
+ * @param beforeImage before-text recovered from the host's own backup store (src/filehistory.ts).
+ *        Used only when the log itself carried no `old_string`; already redacted.
+ * @returns a diff when a before-image is available (inline or recovered), otherwise
+ *          `reconstructable:false` and the applied text as plain added lines.
+ *          Never invents a `del` line.
  */
-export function diffFromArgs(rawArgs: string): DiffResult | null {
+export function diffFromArgs(rawArgs: string, beforeImage?: string, newText?: string): DiffResult | null {
   let args: any;
   try {
     args = JSON.parse(rawArgs);
@@ -94,16 +97,23 @@ export function diffFromArgs(rawArgs: string): DiffResult | null {
   // `content` is how Claude Code's Write carries the whole new file (measured: 52/52 Write calls
   // on this machine use file_path+content, never old_string). Without it a file-writing step
   // would render no diff at all.
+  // The lifted newText wins when present: it is the same string, already redacted, and it
+  // survives the per-step clip that makes rawArgs unparseable.
   const newStr =
-    typeof obj?.new_string === 'string' ? obj.new_string
+    typeof newText === 'string' && newText !== '' ? newText
+    : typeof obj?.new_string === 'string' ? obj.new_string
     : typeof obj?.newText === 'string' ? obj.newText
     : typeof obj?.content === 'string' ? obj.content
     : null;
 
   if (newStr == null) return null;
 
-  if (oldStr != null) {
-    const d = lcsDiff(lines(oldStr), lines(newStr));
+  // The log's own old_string wins: it is the host's contemporaneous statement of the edit.
+  // The recovered backup is the fallback for when the host stopped writing one.
+  const before = oldStr ?? (typeof beforeImage === 'string' && beforeImage !== '' ? beforeImage : null);
+  if (before != null) {
+    const oldS = before;
+    const d = lcsDiff(lines(oldS), lines(newStr));
     return {
       lines: d,
       added: d.filter((x) => x.kind === 'add').length,

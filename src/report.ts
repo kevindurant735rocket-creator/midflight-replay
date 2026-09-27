@@ -29,7 +29,7 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
   // Measure context on the FULL session, then project onto the kept timeline. Building it
   // from t.steps would let the thinned-away usage/tool_output rows flatten the curve.
   const ctx = projectContextTrack(buildContextTrack(session.steps), t.keptIdx);
-  const coverage = computeCoverage(t.steps, session.meta.agent);
+  const coverage = computeCoverage(t.steps, session.meta.agent, session.fileHistory);
 
   // pre-resolve which steps are edits, so the browser only diffs what it must
   const payload = {
@@ -82,7 +82,7 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
 
 /** Exposed so the CLI can report coverage without building a full report. */
 export function coverageOf(session: Session) {
-  return computeCoverage(session.steps, session.meta.agent);
+  return computeCoverage(session.steps, session.meta.agent, session.fileHistory);
 }
 export { isEditTool, diffFromArgs, VERDICT_LABEL };
 
@@ -171,13 +171,21 @@ const EDIT_RE = /\b(edit|write|multiedit|notebookedit|apply_patch|str_replace)\b
 function diffFor(s){
   if(s.kind!=="tool_call"||!EDIT_RE.test(s.name||"")) return null;
   let a=null; try{a=JSON.parse(s.rawArgs||"")}catch(e){}
-  const nw = a && (typeof a.new_string==="string"?a.new_string:typeof a.newText==="string"?a.newText:typeof a.content==="string"?a.content:null);
+  // s.newText is the same string already lifted out of the args and clipped on its own, so it
+  // still exists when per-step clipping has made rawArgs unparseable.
+  const nw = (typeof s.newText==="string"&&s.newText!==""?s.newText:null)
+    || (a && (typeof a.new_string==="string"?a.new_string:typeof a.newText==="string"?a.newText:typeof a.content==="string"?a.content:null));
   if(nw==null) return null;
-  const od = a && (typeof a.old_string==="string"?a.old_string:typeof a.oldText==="string"?a.oldText:null);
+  const log = a && (typeof a.old_string==="string"?a.old_string:typeof a.oldText==="string"?a.oldText:null);
+  // P0-1: when the log carried no old_string, the before-image may have been recovered from
+  // the host's own backup store. The badge says which one, because they are not equally strong.
+  const rec = (log==null && typeof s.beforeImage==="string" && s.beforeImage!=="") ? s.beforeImage : null;
+  const od = log!=null ? log : rec;
+  const src = log!=null ? "log" : "file-history";
   const nb=nw.split("\n");
-  if(od!=null){ const d=lcs(od.split("\n"),nb); if(d) return {recon:true,lines:d};
-    return {recon:true,lines:od.split("\n").map((t,i)=>["del",t,String(i+1)]).concat(nb.map((t,i)=>["add",t,String(i+1)]))}; }
-  return {recon:false,lines:nb.map((t,i)=>["add",t,String(i+1)])};
+  if(od!=null){ const d=lcs(od.split("\n"),nb); if(d) return {recon:true,lines:d,src:src};
+    return {recon:true,lines:od.split("\n").map((t,i)=>["del",t,String(i+1)]).concat(nb.map((t,i)=>["add",t,String(i+1)])),src:src}; }
+  return {recon:false,lines:nb.map((t,i)=>["add",t,String(i+1)]),src:src};
 }
 
 /* ---- dual axis (AC-3b) ---- */
@@ -299,8 +307,11 @@ function detail(){
     const d = diffFor(s);
     if(d){
       h += '<div class="kv">'+(d.recon
-        ? '<span class="badge ok">before-image 可用 · 可逆放</span>'
-        : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+'</div>';
+        ? (d.src==="file-history"
+            ? '<span class="badge warn" title="日志本身没有 old_string；这一份 before-image 由宿主自己的备份（~/.claude/file-history）按内容比对还原，原始文件路径未记录。">before-image 来自 file-history 备份 · 可逆放（非日志内联）</span>'
+            : '<span class="badge ok">before-image 可用 · 可逆放</span>')
+        : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+
+        (d.recon && d.src==="file-history" && s.beforeImageFrom ? ' <span class="badge">备份 '+esc(s.beforeImageFrom)+'</span>':'')+'</div>';
       h += '<div class="diff">'+d.lines.map(l=>'<div class="'+l[0]+'"><span class="ln">'+esc(String(l[2]??""))+'</span>'+(l[0]==="add"?"+":l[0]==="del"?"-":" ")+esc(l[1])+'</div>').join("")+'</div>';
     }
     h += "<pre>"+esc(String(s.args||""))+"</pre>";
@@ -365,8 +376,11 @@ function header(){
   // reader (or the README) never has to trust a claim they cannot check.
   hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+
     ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
-    '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'">'+
-    '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b></div></div>';
+    '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'" data-before-log="'+c.withBeforeLog+'" data-before-backup="'+c.withBeforeBackup+'" data-backups="'+c.backups+'">'+
+    '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b>'+
+    (c.withBeforeBackup>0 ? '（日志内联 <b>'+c.withBeforeLog+'</b> + 备份还原 <b>'+c.withBeforeBackup+'</b>）' : '')+
+    (c.backups===0 && c.edits>0 ? ' · 本机无该会话 file-history 备份' : '')+
+    (c.missing>0 ? ' · 仍缺 <b>'+c.missing+'</b>' : '')+'</div></div>';
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+
     (D.parseErrorCount>5?" 等 "+D.parseErrorCount+" 行":"")+'。原始行号已记录，可用 midflight doctor 查看完整原因。</div>';

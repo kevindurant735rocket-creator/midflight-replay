@@ -4,7 +4,26 @@ export type ReplayStep =
   | { kind: 'user'; ts: number; text: string }
   | { kind: 'assistant'; ts: number; text: string }
   | { kind: 'reasoning'; ts: number; summary: string }
-  | { kind: 'tool_call'; ts: number; callId: string; name: string; args: unknown; rawArgs: string }
+  | {
+      kind: 'tool_call';
+      ts: number;
+      callId: string;
+      name: string;
+      args: unknown;
+      rawArgs: string;
+      /**
+       * The text this edit APPLIED, lifted out of the JSON args. `perStepChars` clips rawArgs,
+       * and a clipped JSON string no longer parses — so the new text used to vanish for any
+       * edit larger than the per-step cap, taking the diff with it. Carried separately, and
+       * clipped separately, so the diff survives a small budget.
+       */
+      newText?: string;
+      /** before-image recovered from the host's own backup store (~/.claude/file-history).
+       *  Set ONLY when the log itself carried no old_string; already redacted. */
+      beforeImage?: string;
+      /** which backup version produced it, e.g. `3f2a91c@v1` — provenance for the reader */
+      beforeImageFrom?: string;
+    }
   | { kind: 'tool_output'; ts: number; callId: string; output: string; truncated: boolean }
   | { kind: 'turn_start'; ts: number; turnId: string; model?: string; effort?: string; contextWindow?: number }
   | { kind: 'turn_end'; ts: number; turnId: string; durationMs?: number; ttftMs?: number }
@@ -61,6 +80,39 @@ export interface Session {
   unknownCount: number;
   /** true when parse errors were severe enough to invalidate the session */
   truncated: boolean;
+  /** what the host's file-history backup store could add, and how much was actually used */
+  fileHistory?: FileHistoryStats;
+}
+
+/**
+ * What the host's file-history backup store contributed. Canonical here so the adapter, the
+ * coverage bar, `doctor --json` and the report cannot drift into four different shapes.
+ */
+export interface FileHistoryStats {
+  root: string;
+  /** the store (or this session's directory of it) exists */
+  available: boolean;
+  /** backup files present for this session */
+  backups: number;
+  /** delta records that named a backup AND whose message was found */
+  resolved: number;
+  /** before-images actually attached to a step */
+  joins: number;
+  /** joins where the log's own old_string agreed with the backup */
+  agree: number;
+  /** joins where the log HAD an old_string and the backup contradicts it — a real discrepancy */
+  disagree: number;
+  /** joins where the log had no old_string at all: the backup is the only surviving copy */
+  recovered: number;
+  /** deltas the host declined to track (`backupFileName: null`) */
+  untracked: number;
+  /** named backups that were gone from disk */
+  missing: number;
+  /** backups over the read ceiling */
+  oversize: number;
+  /** backups that could not be read */
+  unreadable: number;
+  reason: string;
 }
 
 export interface ParseStats {

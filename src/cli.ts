@@ -59,6 +59,11 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
     unknownSteps: st.unknownSteps,
     warnings: session.warnings,
     byKind: st.byKind,
+    // P0-1: the two numbers that decide whether this log can be replayed offline at all.
+    // Flat on purpose — `jq '.fileHistoryJoins'` must not need to know the shape of the detail.
+    fileHistoryBackups: session.fileHistory?.backups ?? 0,
+    fileHistoryJoins: session.fileHistory?.joins ?? 0,
+    fileHistory: session.fileHistory ?? null,
     parseMs: st.durationMs,
   };
   if (json) console.log(JSON.stringify(payload, null, 2));
@@ -69,6 +74,13 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
     if (payload.parseErrorCount) {
       console.log(`  ${payload.parseErrorCount} bad line(s); first:`);
       for (const e of session.parseErrors.slice(0, 5)) console.log(`    line ${e.line}: ${e.error}`);
+    }
+    if (payload.fileHistoryBackups > 0 || payload.fileHistoryJoins > 0) {
+      const h = payload.fileHistory;
+      console.log(
+        `  file-history: ${payload.fileHistoryBackups} backup(s); ${payload.fileHistoryJoins} edit(s) matched` +
+          (h ? ` — recovered ${h.recovered}, cross-checked ${h.agree + h.disagree} (${h.disagree} disagree), untracked ${h.untracked}` : ''),
+      );
     }
     for (const w of session.warnings) console.log(`  warn: ${w}`);
   }

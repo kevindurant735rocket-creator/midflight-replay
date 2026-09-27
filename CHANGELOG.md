@@ -4,6 +4,44 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Before-images from the host's own backup store** — `midflight` now reads
+  `~/.claude/file-history/<sessionId>/<hash>@v<n>` and pairs each `file-history-delta`
+  with the edit that produced it. The join is the transcript, not a guess:
+  `delta.messageId` → the assistant record's `uuid` → the `tool_use` in that message
+  whose `file_path` equals `backup.realParentDir + basename(trackingPath)`. When the two
+  paths disagree the tool falls back to the message's single edit, and refuses entirely
+  when that would be ambiguous — a wrong before-image is worse than a missing one.
+
+  When the log *also* carries an `old_string`, the two are cross-checked rather than one
+  silently overwriting the other; a mismatch is surfaced, because a log that disagrees
+  with the host's backup is exactly the kind of thing a forensic tool exists to show.
+
+  Measured across every local session with a backup directory (40 sessions, 290 deltas):
+  274/274 `messageId`s resolve, the named backup exists 274/274, 0 disagreements. The
+  rescue path is proven by stripping `old_string` from all 211 tool calls of session
+  `671a21ed`: `backups=113 joined=55 agree=0 disagree=0 recovered=55` — 55 edits that
+  were previously unrecoverable now render real diffs, badged
+  `before-image 来自 file-history 备份 · 可逆放（非日志内联）`.
+
+  Per-file read ceiling is 4 MiB. Oversize, missing, unreadable and host-untracked
+  backups are each counted and reported, never silently dropped. `doctor --json` and the
+  report header both surface the counts.
+
+### Fixed
+
+- Edits larger than `--per-step-chars` no longer lose their diff. The per-step clip made
+  the stored tool arguments unparseable JSON, which silently erased the applied text
+  (and therefore the diff). The applied text is now lifted from the unredacted input,
+  redacted and clipped independently of the displayed arguments.
+- The before-image agreement check no longer compares *redacted* text. Redaction is not a
+  homomorphism across a JSON-escape boundary, so a secret straddling one produced false
+  disagreements on agreeing pairs. The check now runs on the unredacted values, which are
+  compared and dropped — never rendered.
+
 ## [0.1.0] — 2026-09-27
 
 First public release. Parses real Codex and Claude Code session logs and turns

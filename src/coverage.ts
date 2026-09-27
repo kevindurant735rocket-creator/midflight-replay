@@ -1,4 +1,4 @@
-import type { ReplayStep } from './types.js';
+import type { FileHistoryStats, ReplayStep } from './types.js';
 import { isEditTool, diffFromArgs } from './diff.js';
 
 /**
@@ -27,8 +27,16 @@ export interface Coverage {
   edits: number;
   /** shell calls whose command text carries a write marker (heuristic) */
   shellMutations: number;
-  /** edits whose arguments carried a before-image (`old_string`) */
+  /** edits with a before-image from any source (log inline or host backup store) */
   withBefore: number;
+  /** subset whose before-image the log itself carried (`old_string`) */
+  withBeforeLog: number;
+  /** subset recovered from ~/.claude/file-history (P0-1) */
+  withBeforeBackup: number;
+  /** backups the host had for this session; 0 when there is no backup store */
+  backups: number;
+  /** edits that needed a before-image and got none, after both sources were tried */
+  missing: number;
   /** withBefore / edits, 1.0 when there are no edits at all */
   ratio: number;
   verdict: 'full' | 'partial' | 'diff-only' | 'no-edits';
@@ -36,9 +44,10 @@ export interface Coverage {
   reason: string;
 }
 
-export function computeCoverage(steps: ReplayStep[], agent: string): Coverage {
+export function computeCoverage(steps: ReplayStep[], agent: string, fh?: FileHistoryStats): Coverage {
   let edits = 0;
-  let withBefore = 0;
+  let withBeforeLog = 0;
+  let withBeforeBackup = 0;
   let shellMutations = 0;
   for (const s of steps) {
     if (s.kind !== 'tool_call') continue;
@@ -48,12 +57,25 @@ export function computeCoverage(steps: ReplayStep[], agent: string): Coverage {
     }
     if (!isEditTool(s.name)) continue;
     edits += 1;
-    const d = diffFromArgs(s.rawArgs);
-    if (d?.reconstructable) withBefore += 1;
+    const d = diffFromArgs(s.rawArgs, s.beforeImage, s.newText);
+    if (!d?.reconstructable) continue;
+    // Provenance matters to the reader: a before-image the host stated contemporaneously is
+    // a stronger claim than one reconstructed from a backup file after the fact.
+    if (diffFromArgs(s.rawArgs, undefined, s.newText)?.reconstructable) withBeforeLog += 1;
+    else withBeforeBackup += 1;
   }
-
+  const withBefore = withBeforeLog + withBeforeBackup;
+  const missing = Math.max(0, edits - withBefore);
+  const backups = fh?.backups ?? 0;
   const ratio = edits === 0 ? 1 : withBefore / edits;
   const total = edits + shellMutations;
+  // Named only when it explains the gap; otherwise it is noise in a one-sentence verdict.
+  const backupNote =
+    withBeforeBackup > 0
+      ? `（其中 ${withBeforeBackup} 处由 ~/.claude/file-history 备份还原，共扫描到 ${backups} 个备份）`
+      : backups > 0
+        ? `（本机有 ${backups} 个 file-history 备份，日志已自带全部 before-image，未做交叉校验）`
+        : '';
   let verdict: Coverage['verdict'];
   let reason: string;
   if (total === 0) {
@@ -66,15 +88,22 @@ export function computeCoverage(steps: ReplayStep[], agent: string): Coverage {
       `日志未记录任何 before-image，因此只能看命令本身，不能逆放。`;
   } else if (ratio === 1) {
     verdict = 'full';
-    reason = `${edits} 处编辑全部带 before-image，文件状态可离线逆放。`;
+    reason = `${edits} 处编辑全部带 before-image，文件状态可离线逆放。${backupNote}`;
   } else if (ratio > 0) {
     verdict = 'partial';
-    reason = `${edits} 处编辑中 ${withBefore} 处带 before-image，其余只能看到 agent 自述的补丁。`;
+    reason = `${edits} 处编辑中 ${withBefore} 处带 before-image，其余 ${missing} 处只能看到 agent 自述的补丁。${backupNote}`;
+  } else if (backups > 0) {
+    verdict = 'diff-only';
+    reason =
+      `本会话 ${edits} 处编辑既没有日志内联的 old_string，也没有能对上的 file-history 备份` +
+      `（已扫描 ${backups} 个备份），只能看 diff，不能逆放。`;
   } else {
     verdict = 'diff-only';
-    reason = `本会话 ${edits} 处编辑均未记录 before-image（该 host 不写 old_string），只能看 diff，不能逆放。`;
+    reason =
+      `本会话 ${edits} 处编辑均未记录 before-image（该 host 不写 old_string，本机也没有该会话的 file-history 备份），` +
+      `只能看 diff，不能逆放。`;
   }
-  return { agent, edits, withBefore, ratio, shellMutations, verdict, reason };
+  return { agent, edits, withBefore, withBeforeLog, withBeforeBackup, backups, missing, ratio, shellMutations, verdict, reason };
 }
 
 export const VERDICT_LABEL: Record<Coverage['verdict'], string> = {
