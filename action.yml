@@ -63,6 +63,11 @@ runs:
           echo "::error::no session log found (session=$SESSION dir=$DIR). Add a .jsonl, or point 'session' at one."
           exit 1
         fi
+        # The digest step runs from $GITHUB_ACTION_PATH, so a relative path would
+        # resolve against the action's own checkout instead of the caller's repo.
+        # Keep the caller's spelling for display; the runner path never leaks.
+        echo "label=$p" >> "$GITHUB_OUTPUT"
+        p="$(cd "$(dirname "$p")" && pwd)/$(basename "$p")"
         echo "path=$p" >> "$GITHUB_OUTPUT"
         echo "replaying $p ($(wc -c < "$p" | tr -d ' ') bytes)"
 
@@ -71,6 +76,7 @@ runs:
       shell: bash
       env:
         PATH_OUT: ${{ steps.resolve.outputs.path }}
+        LABEL: ${{ steps.resolve.outputs.label }}
         MAX_STEPS: ${{ inputs.max-steps }}
       run: |
         set -euo pipefail
@@ -86,7 +92,7 @@ runs:
           echo
           cat digest.html
           echo
-          echo "<sub>Built by [midflight-replay](${{ github.server_url }}/${{ github.repository }}) from \`$PATH_OUT\`.</sub>"
+          echo "<sub>Built by [midflight-replay](${{ github.server_url }}/${{ github.repository }}) from \`$LABEL\`.</sub>"
         } > comment.md
         cp comment.md "$GITHUB_STEP_SUMMARY"
         echo "digest-bytes=$bytes" >> "$GITHUB_OUTPUT"
