@@ -19,6 +19,33 @@
 `prime-radiant-inc/claude-session-viewer` 43★、`finchvox/finchvox` 34★（Pipecat 语音 agent 的 observability + session replay）、
 `Alexli18/binex` 62★（agent workflow 可调试运行时）、`ZIZKA-AI-SL/ZizkaDB` 114★（agent 审计库）。
 
+## 1b. npm 上的两个直接对手（2026-09-27 实测；这是选型的硬依据）
+
+GitHub 搜竞品会漏掉**只在 npm 发过、GitHub 已删/未建**的那些。我们本来打算用
+`midflight`、`agent-replay`、`flightrec` 三个名字，逐个探测的结果推翻了直觉：
+
+| 候选名 | npm 实况 | GitHub 实况 | 月下载 | 判定 |
+|---|---|---|---|---|
+| `agent-replay` | **v0.1.1 已占**，`mttetc/agent-replay`；描述 = "DevTools for replaying AI agent sessions — browse, inspect, and debug Claude Code and Cursor sessions with a timeline-based UI" | `mttetc/agent-replay` → **404（仓库已删/转私有）** | **9** | 名字被一个**僵尸包**占了，最后发版 2026-02-16 |
+| `flightrec` | **v0.9.0 已占**，`busminer/flightrec`；描述 = "A flight recorder for Codex sessions" | `busminer/flightrec` ★**0**，建仓日 = 最后 push 日 = 2026-07-15 | **16** | 一次性上传后**再没动过** |
+| `midflight` | 404（`npm view midflight` → E404） | — | — | 名义可注册，但与 binary 同名会让人以为 `npm i midflight` 能装 |
+| **`midflight-replay`** | **404** | **404** | — | **选中** |
+
+三条可复现的推论（每条都能被上面数字推翻）：
+
+1. **这个品类在 npm 上没有一个活着的在位者。** 最贴脸的两个对手，
+   一个仓库已 404、一个 ★0 且当天建当天停更，月下载个位数。
+   也就是说：`npm 上没人占住这个位置`，不是"位置被抢了"。
+2. **但名字是真的被占了。** `npm publish` 对 `agent-replay` 必然 `EPUBLISHCONFLICT`。
+   我们在 2026-09-27 实测撞过这堵墙，所以最终取 `midflight-replay`：
+   **repo 名 = npm 包名**（同一条 `gh repo create` / `npm publish` 命令不需要换算），
+   **binary 仍叫 `midflight`**（对齐 `@angular/cli` → `ng` 的惯例）。
+3. **这条证据反过来加固了 §3 的第 5 条结论。** 之前只有 GitHub 星数说明"分发失败"，
+   现在有了分发侧的第二个独立指标：**月下载 9 / 16**。
+   榜单上 388★ 的 `cc-sessions-viewer` 是 Rust 桌面应用（不进 npm），
+   372★ 的 `claude-code-trace` 同理 —— 它们和我们在**分发渠道上根本不重叠**。
+   推论：我们的对手不是那 388★，而是"npm 上一个月只有 9 次下载"这个事实本身。
+
 ## 2. 参照系（说明"高分"到底要多高）
 | ★ | 仓库 | 说明 |
 |---|---|---|
@@ -78,3 +105,27 @@ gh api repos/<owner>/<repo>/readme --jq '.content' | base64 -d
 
 "停更即无人知晓"这条结论因此更硬了：`Agent-Blackbox` 停在 2026-07-26，
 距今 2 个月，star 仍卡在 76，open issues = 0。
+
+### 复跑 §1b 的 npm 侧取证（2026-09-27）
+
+```bash
+# 名字是否被占：200=已占（有版本），404=可注册
+for p in agent-replay flightrec midflight midflight-replay; do
+  npm view "$p" name version description repository.url 2>&1 | head -5
+done
+
+# 最后发版时间（判断对手是否还活着）
+npm view agent-replay time.modified        # 2026-02-16  ← 7 个月没动
+npm view flightrec   time.modified        # 2026-07-15  ← 建仓当天
+
+# GitHub 侧（注意 agent-replay 的仓库已 404）
+gh api repos/mttetc/agent-replay --jq .full_name       # Not Found
+gh api repos/busminer/flightrec  --jq '.stargazers_count, .created_at[0:10], .pushed_at[0:10]'
+
+# 月下载量（npm 公开 API，无需 key）
+curl -s https://api.npmjs.org/downloads/point/last-month/agent-replay,flightrec
+# {"agent-replay":{"downloads":9},"flightrec":{"downloads":16}}
+```
+
+**这套探针就是 `docs/RELEASE.md` §2 的重跑脚本**——发布前必须确认
+`midflight-replay` 仍是 404，否则 `npm publish` 会当场炸 `EPUBLISHCONFLICT`。

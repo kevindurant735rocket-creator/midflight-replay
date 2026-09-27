@@ -1,5 +1,5 @@
 {
-  "name": "midflight",
+  "name": "midflight-replay",
   "version": "0.1.0",
   "private": false,
   "description": "Turn a finished AI coding-agent session into a scrubbable, single-file HTML replay you can attach to a PR. Zero deps, zero build, zero network.",
@@ -19,6 +19,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "doctor": "node dist/cli.js doctor fixtures/codex-mini.jsonl --json"
   },
@@ -30,11 +32,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevindurant735rocket-creator/agent-replay.git"
+    "url": "git+https://github.com/kevindurant735rocket-creator/midflight-replay.git"
   },
-  "homepage": "https://github.com/kevindurant735rocket-creator/agent-replay#readme",
+  "homepage": "https://github.com/kevindurant735rocket-creator/midflight-replay#readme",
   "bugs": {
-    "url": "https://github.com/kevindurant735rocket-creator/agent-replay/issues"
+    "url": "https://github.com/kevindurant735rocket-creator/midflight-replay/issues"
   },
   "author": "kevindurant735rocket-creator",
   "types": "dist/types.d.ts",

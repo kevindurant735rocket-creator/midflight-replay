@@ -53,4 +53,4 @@ commands printed beneath the table in the README.
 - Not an agent-instrumentation layer. There is no hook and no wrapper, which is
   exactly why it cannot report anything the log does not contain.
 
-[0.1.0]: https://github.com/kevindurant735rocket-creator/agent-replay/releases/tag/v0.1.0
+[0.1.0]: https://github.com/kevindurant735rocket-creator/midflight-replay/releases/tag/v0.1.0

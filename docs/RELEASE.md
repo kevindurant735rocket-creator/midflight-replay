@@ -3,16 +3,28 @@
 Every command below has been run on this machine. Copy-paste in order; each block
 ends with the exit code you should see.
 
-**Naming is already resolved — do not re-pick it.**
+**Naming is resolved. Every row below was measured, not assumed — and the first
+draft of this file was wrong, so re-run the probe before you trust it again.**
 
-| surface | name | status (checked 2026-09-27) |
-|---|---|---|
-| GitHub repo | `agent-replay` | free |
-| npm package | `midflight` | free — `curl -o /dev/null -w "%{http_code}" https://registry.npmjs.org/midflight` → `404` |
-| ~~npm package~~ | ~~`agent-replay`~~ | **taken** — the same URL returns `200` |
+| name | npm | github.com | verdict |
+|---|---|---|---|
+| `midflight` | `200` **but zero versions** | `200` | unusable — an empty shell package that still owns the name, so `npm publish` returns EPUBLISHCONFLICT |
+| `agent-replay` | `200` — v0.1.1, *"DevTools for replaying AI agent sessions"* | free, but **25+ repos share the exact name** | unusable on npm, and a direct competitor there; on GitHub it is legal but invisible in search |
+| `flightrec` | `200` — v0.9.0, *"A flight recorder for Codex sessions"* | `200` | unusable, also a direct competitor |
+| **`midflight-replay`** | **`404`** | **`404`** | **chosen** — free on both, distinctive enough to find, keeps the brand |
 
-They differ on purpose. The repo is named after the problem; the package is named
-after the thing. The README FAQ explains it so nobody files "why don't these match".
+So: **repo = npm package = `midflight-replay`**, and the **binary stays `midflight`**.
+The CLI and the package deliberately differ, the same way `@angular/cli` ships `ng`;
+the README Install section says so in one line so nobody files "why don't these match".
+
+Re-probe before publishing (all four return `404` as of 2026-09-27):
+
+```bash
+for n in midflight-replay; do
+  echo -n "npm/$n  "; curl -s -o /dev/null -w "%{http_code}\n" "https://registry.npmjs.org/$n"
+  echo -n "gh/$n   "; curl -s -o /dev/null -w "%{http_code}\n" -L "https://github.com/kevindurant735rocket-creator/$n"
+done
+```
 
 ---
 
@@ -22,7 +34,7 @@ after the thing. The README FAQ explains it so nobody files "why don't these mat
 cd ~/Desktop/项目/agent-replay
 npm ci
 npm run typecheck        # exit 0
-npx vitest run           # 42 passed
+npx vitest run           # 52 passed
 npm run build            # exit 0
 node dist/cli.js doctor fixtures/codex-mini.jsonl --json      # exit 0
 node dist/cli.js doctor fixtures/codex-truncated.jsonl --json  # exit 1  (negative test)
@@ -65,7 +77,7 @@ Both must end `0 failed` and include `ok   no requests fired during interaction`
 
 ```bash
 gh auth status                 # expect: logged in, scopes gist, read:org, repo
-gh repo create kevindurant735rocket-creator/agent-replay \
+gh repo create kevindurant735rocket-creator/midflight-replay \
   --public --description "Turn a finished AI coding-agent session into a single scrubbable HTML file you can attach to a PR." \
   --source . --remote origin --push
 ```
@@ -73,7 +85,7 @@ gh repo create kevindurant735rocket-creator/agent-replay \
 If the repo name is taken, stop and pick another — do **not** silently rename the npm
 package to match, and do not rename the repo to `midflight` without also updating
 `package.json`'s `repository` / `homepage` / `bugs` blocks, which all point at
-`kevindurant735rocket-creator/agent-replay`.
+`kevindurant735rocket-creator/midflight-replay`.
 
 Enable these on the repo after push:
 

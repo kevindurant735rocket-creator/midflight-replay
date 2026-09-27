@@ -76,7 +76,7 @@ open replay.html
 一条命令：
 
 ```bash
-npx midflight replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay.html
+npx midflight-replay replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay.html
 ```
 
 `replay.html` 是单个自包含文件。不用起服务、不用 CDN、不用构建、不发任何网络请求 ——
@@ -91,13 +91,14 @@ npx midflight replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay
 需要 **Node 20+**，别的都不要。
 
 ```bash
-npx midflight replay <session.jsonl> --out replay.html
+npx midflight-replay replay <session.jsonl> --out replay.html
 ```
 
-或者装到全局：
+或者装到全局 —— 注意二进制命令叫 `midflight`，就像 `@angular/cli` 装出来的是 `ng`：
 
 ```bash
-npm i -g midflight
+npm i -g midflight-replay
+midflight doctor <session.jsonl>
 ```
 
 工具本身不需要 `npm install` —— 运行时依赖是 0 个。仓库里的 devDependencies 只用于
@@ -116,10 +117,10 @@ midflight 读的是 agent 本来就在写的 JSONL。它不要求你打开任何
 
 ```bash
 # 最新的 Codex 会话
-npx midflight replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
 
 # 最新的 Claude Code 会话
-npx midflight replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
 ```
 
 格式靠第一条完整记录**结构上**识别，不看文件名、不看目录名。两种都不认的话，
@@ -151,7 +152,7 @@ GitHub 会把粘进评论里的 `<script>` 和 `<style>` 全部剥掉。所有 H
 ### 2. `--paste` —— GitHub 安全块
 
 ```bash
-npx midflight replay session.jsonl --paste > digest.html
+npx midflight-replay replay session.jsonl --paste > digest.html
 ```
 
 ≤60KB，只含 `details / summary / table / pre / code / div`。零 `<script>`、
@@ -202,8 +203,8 @@ agent 动作 —— 所以 midflight 现在**认得出**它们，而不是丢进
 两行都可以自己复现：
 
 ```bash
-npx midflight doctor <session.jsonl> --json   # steps / byKind / parseErrors / unknownSteps
-/usr/bin/time -l npx midflight replay <session.jsonl> --out /tmp/r.html --json  # RSS
+npx midflight-replay doctor <session.jsonl> --json   # steps / byKind / parseErrors / unknownSteps
+/usr/bin/time -l npx midflight-replay replay <session.jsonl> --out /tmp/r.html --json  # RSS
 ```
 
 那个 109MB 的文件峰值 RSS **273MB**（`286,736,384` 字节）。解析是逐行流式的，从不整文件读进内存。

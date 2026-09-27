@@ -89,7 +89,7 @@ an honest statement of how much of it could be reconstructed.
 One command:
 
 ```bash
-npx midflight replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay.html
+npx midflight-replay replay ~/.codex/sessions/2026/09/27/rollout-....jsonl --out replay.html
 ```
 
 `replay.html` is one self-contained file. No server, no CDN, no build step, no
@@ -103,13 +103,15 @@ air-gapped laptop, from 2030.
 Requires **Node 20+**. Nothing else.
 
 ```bash
-npx midflight replay <session.jsonl> --out replay.html
+npx midflight-replay replay <session.jsonl> --out replay.html
 ```
 
-Or pin it:
+Or pin it — note the binary is `midflight`, so this gives you the `midflight`
+command, like `@angular/cli` gives you `ng`:
 
 ```bash
-npm i -g midflight
+npm i -g midflight-replay
+midflight doctor <session.jsonl>
 ```
 
 There is no `npm install` step for the tool itself — it ships zero runtime
@@ -129,10 +131,10 @@ anything, and it never touches your workspace.
 
 ```bash
 # newest Codex session
-npx midflight replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
 
 # newest Claude Code session
-npx midflight replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
 ```
 
 Format is auto-detected from the first intact record, never from the file name, and
@@ -166,7 +168,7 @@ scrub under 100ms per step.
 ### 2. `--paste` — the GitHub-safe digest
 
 ```bash
-npx midflight replay session.jsonl --paste > digest.html
+npx midflight-replay replay session.jsonl --paste > digest.html
 ```
 
 A ≤60KB block containing only `details / summary / table / pre / code / div`.
@@ -223,8 +225,8 @@ is not decoded, with the command that proves it.
 Reproduce both rows yourself:
 
 ```bash
-npx midflight doctor <session.jsonl> --json   # steps, byKind, parseErrors, unknownSteps
-/usr/bin/time -l npx midflight replay <session.jsonl> --out /tmp/r.html --json  # RSS
+npx midflight-replay doctor <session.jsonl> --json   # steps, byKind, parseErrors, unknownSteps
+/usr/bin/time -l npx midflight-replay replay <session.jsonl> --out /tmp/r.html --json  # RSS
 ```
 
 The 109 MB file peaked at **273 MB** RSS (`286,736,384` bytes) — it is streamed
@@ -309,10 +311,17 @@ An interactive report cannot survive that, so `--paste` emits a digest built onl
 whitelisted tags, verified by test to contain no script, no style, no `on*=` handler,
 and no external reference.
 
-**Why is the npm package called `midflight` but this repo `agent-replay`?**
-`agent-replay` is taken on npm (an unrelated time-travel tool) and this repo keeps
-the name that describes the use case. The `midflight` package name was free at the
-time of writing and the binary is `midflight`.
+**Why is the package `midflight-replay` when the command is `midflight`?**
+Because the plain name was not available and the mismatch is worth one line of
+explanation rather than an ugly binary. Measured, not assumed:
+
+| name | npm | github |
+|---|---|---|
+| `midflight` | registered, **zero versions** — `npm publish` would fail with EPUBLISHCONFLICT | taken |
+| `agent-replay` | taken — v0.1.1, *"DevTools for replaying AI agent sessions"* | 25+ repos share the name |
+| `midflight-replay` | free | free |
+
+`docs/RELEASE.md` keeps the probe so you can re-check before anyone squats it.
 
 **Does it work on a session that is still running?** You can, but you get a snapshot
 of the file as it is when you read it. midflight is built for sessions that already
