@@ -7,3 +7,4 @@ digest.html
 check.html
 check2.html
 .release-assets/
+*.tgz

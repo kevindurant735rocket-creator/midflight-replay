@@ -64,4 +64,4 @@ the *ranking rule*, so the rule cannot drift with the volume.
 
 Anything that cannot be measured on a real session log, and anything that would put
 a network call, a server, or a runtime dependency between a user and the artefact.
-Those three are the product ([README](../README.md#why-single-file)), not preferences.
+Those three are the product ([README](../README.md#the-two-outputs)), not preferences.

@@ -73,7 +73,7 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
 
   if (bytes > maxBytes) {
     throw new Error(
-      `report would be ${(bytes / 1048576).toFixed(2)}MB, over the ${(maxBytes / 1048576).toFixed(0)}MB ceiling. ` +
+      `report would be ${(bytes / 1048576).toFixed(2)} MiB, over the ${(maxBytes / 1048576).toFixed(0)} MiB ceiling. ` +
         `Refusing to ship a half report. Try --max-steps or --per-step-chars.`,
     );
   }

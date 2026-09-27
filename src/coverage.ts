@@ -7,7 +7,7 @@ import { isEditTool, diffFromArgs } from './diff.js';
  * actually give back — before the reader trusts a diff as if it were a real time machine.
  */
 /** Codex has no structured edit tool: every file change is a shell command (measured 3391/3391
- *  `exec_command` on a real 109MB rollout). Counting only structured edits would report
+ *  `exec_command` on a real 109 MiB rollout). Counting only structured edits would report
  *  "no edits" for a session that rewrote the repo, so shell-carried mutations are counted too —
  *  and labelled as the heuristic they are. */
 const SHELL_TOOLS = /^(exec_command|shell|bash|sh|zsh|run_command|terminal)$/i;

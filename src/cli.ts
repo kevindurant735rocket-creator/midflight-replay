@@ -5,6 +5,7 @@ import { redact } from './redact.js';
 import { buildReport } from './report.js';
 import { buildPaste, assertPasteSafe } from './paste.js';
 import { writeFileSync } from 'node:fs';
+import { readVersion } from './version.js';
 
 const USAGE = `midflight — forensic replay for AI coding agents
 
@@ -13,6 +14,7 @@ Usage
   midflight doctor <session.jsonl> [--json]    parse a session and report health; exit 1 on bad input
   midflight stats  <session.jsonl> [--json]    parse and print step counts
   midflight redact                            run the redactor over stdin
+  midflight --version                          print the installed version
   midflight help
 
 Replay options
@@ -62,7 +64,7 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
   if (json) console.log(JSON.stringify(payload, null, 2));
   else {
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${path}`);
-    console.log(`  adapter=${payload.adapter} agent=${payload.agent} lines=${payload.lines} steps=${payload.steps} (${st.durationMs}ms, ${(bytes / 1048576).toFixed(1)}MB)`);
+    console.log(`  adapter=${payload.adapter} agent=${payload.agent} lines=${payload.lines} steps=${payload.steps} (${st.durationMs}ms, ${(bytes / 1048576).toFixed(1)} MiB)`);
     console.log(`  byKind=${JSON.stringify(st.byKind)}`);
     if (payload.parseErrorCount) {
       console.log(`  ${payload.parseErrorCount} bad line(s); first:`);
@@ -150,7 +152,7 @@ async function cmdReplay(path: string, argv: string[]): Promise<number> {
         ),
       );
     } else {
-      console.error(`wrote ${out}  ${(r.bytes / 1048576).toFixed(2)}MB  steps ${r.kept}/${r.total}  coverage=${r.coverageVerdict}  parse=${parseMs}ms`);
+      console.error(`wrote ${out}  ${(r.bytes / 1048576).toFixed(2)} MiB  steps ${r.kept}/${r.total}  coverage=${r.coverageVerdict}  parse=${parseMs}ms`);
     }
   } else {
     process.stdout.write(r.html);
@@ -192,6 +194,12 @@ async function main(): Promise<number> {
   const cmd = argv[0];
   const json = argv.includes('--json');
   const rest = argv.slice(1).filter((a) => !a.startsWith('--'));
+  if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
+    // Read from the package the tarball actually shipped, so the number can
+    // never drift from what npm reports. Never fatal if the layout changes.
+    console.log(readVersion());
+    return 0;
+  }
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') {
     console.log(USAGE);
     return cmd ? 0 : 1;

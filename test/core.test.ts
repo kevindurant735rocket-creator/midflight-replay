@@ -81,7 +81,7 @@ describe('W3 thinning policy (never silently drop)', () => {
     expect(isProtected({ kind: 'note', ts: 1, level: 'info', text: 'x' })).toBe(false);
   });
   it('still samples prose when protected rows alone exceed the budget (G4-3)', () => {
-    // The measured case: 110 MB Codex session, 3,689 tool calls + 22 compactions = 3,711
+    // The measured case: 109 MiB Codex session, 3,689 tool calls + 22 compactions
     // protected vs a 3,000 default. The old budget floored at 0 and dropped every
     // user/assistant/reasoning step in the file.
     // 11,000 prose steps against a 300-slot reserve, so the drop path is exercised too.
@@ -424,5 +424,22 @@ describe('session chrome is not noise, and the title is worth keeping (G4-6)', (
     const r = buildReport(s);
     expect(r.html).toContain('"title":"任务监控系统改进"');
     expect(r.html).toMatch(/\["标题",m\.title\]/);
+  });
+});
+
+describe('AC-13 the installed CLI can be asked what it is', () => {
+  it('reads the version from the package.json the tarball ships', async () => {
+    const { readVersion } = await import('../src/version.js');
+    const pkg = JSON.parse(
+      await import('node:fs').then((fs) =>
+        fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')),
+    ) as { version: string };
+    expect(readVersion()).toBe(pkg.version);
+    expect(readVersion()).toMatch(/^\d+\.\d+\.\d+/);
+  });
+  it('degrades to "unknown" instead of throwing when the package is gone', async () => {
+    const { readVersion } = await import('../src/version.js');
+    expect(readVersion(new URL('file:///nonexistent/package.json'))).toBe('unknown');
+    expect(readVersion(new URL('file:///etc/hosts'))).toBe('unknown'); // not JSON
   });
 });

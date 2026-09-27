@@ -7,7 +7,7 @@ import type { ReplayStep } from './types.js';
  * **accumulated content mass in characters**, not exact token attribution, and the report
  * says so. Evaporation is not guessed either — when the host emits a `compaction` event we
  * treat the carried mass as replaced by that summary, and render the discarded part as a
- * ghost band. Measured on a real 109MB rollout: 22 compaction events.
+ * ghost band. Measured on a real 109 MiB rollout: 22 compaction events.
  */
 export const CATEGORIES = ['conversation', 'reasoning', 'tool_output', 'compaction'] as const;
 export type Category = (typeof CATEGORIES)[number];

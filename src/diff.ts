@@ -3,7 +3,7 @@
  *
  * Codex and Claude Code do NOT agree here, and the report must not pretend they do:
  *   - Claude Code logs carry `old_string` / `new_string` per edit tool call, so a real
- *     before/after diff is reconstructable (measured 243/246 edit calls on a 32MB session).
+ *     before/after diff is reconstructable (measured 244 edit calls, 127 with before-image, on a 31 MiB Claude session).
  *   - Codex rollout `function_call.arguments` has no `old_string`, so we can only show the
  *     patch the agent claimed to apply. The coverage bar states this; this module never
  *     fabricates a reverse.

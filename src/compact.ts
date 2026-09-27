@@ -7,7 +7,7 @@ import type { ReplayStep } from './types.js';
  *   b. when the step count exceeds budget we stride-sample, but these four NEVER drop:
  *      tool_call / compaction / note(level>=warn) / parse-error rows
  *   b2. protected rows alone can exceed the budget (3,711 protected vs the 3,000
- *      default on this machine's 110MB Codex session). G4-3 added a prose reserve so
+ *      default on this machine's 109 MiB Codex session). G4-3 added a prose reserve so
  *      the conversation is never thinned to *zero* by arithmetic — see PROSE_SHARE.
  *   c. the report carries a visible declaration of what was thinned, per kind
  *   d. if it still does not fit, the caller errors out instead of shipping a half report
@@ -16,7 +16,7 @@ export const NEVER_DROP = new Set<ReplayStep['kind']>(['tool_call', 'compaction'
 
 /**
  * Fraction of the budget held back for non-protected steps (prose) when the protected
- * rows alone would consume the whole budget. Measured on this machine's 110 MB Codex
+ * rows alone would consume the whole budget. Measured on this machine's 109 MiB Codex
  * session: 3,689 tool calls + 22 compactions = 3,711 protected vs a 3,000 default, so
  * the old `max(0, max - protected)` budget floored at 0 and dropped 11,189 of 14,905
  * steps, while the banner only said "kept all tool calls" — so the report looked

@@ -317,6 +317,7 @@ midflight replay <session.jsonl> [options]   build a self-contained replay
 midflight doctor <session.jsonl> [--json]    parse and report health; exit 1 on bad input
 midflight stats  <session.jsonl> [--json]    parse and print step counts
 midflight redact                            run the redactor over stdin
+midflight --version                          print the installed version
 ```
 
 | Option | Default | Meaning |
@@ -375,7 +376,7 @@ explanation rather than an ugly binary. Measured, not assumed:
 |---|---|---|
 | `midflight` | registered, **zero versions** — `npm publish` would fail with EPUBLISHCONFLICT | taken |
 | `agent-replay` | taken — v0.1.1, *"DevTools for replaying AI agent sessions"* | 25+ repos share the name |
-| `midflight-replay` | free | free |
+| `midflight-replay` | free (probed 2026-09-27) | free under `kevindurant735rocket-creator` |
 
 `docs/RELEASE.md` keeps the probe so you can re-check before anyone squats it.
 

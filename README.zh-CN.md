@@ -284,6 +284,7 @@ midflight replay <session.jsonl> [options]   生成自包含回放
 midflight doctor <session.jsonl> [--json]    解析并体检；输入有问题时 exit 1
 midflight stats  <session.jsonl> [--json]    解析并打印步数统计
 midflight redact                            对 stdin 跑脱敏
+midflight --version                          打印已安装的版本
 ```
 
 | 选项 | 默认 | 含义 |
