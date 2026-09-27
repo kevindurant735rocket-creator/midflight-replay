@@ -6,7 +6,7 @@
 ## 1. 直接竞品（8 个，全部实测到 star / 建仓日 / 最后 push / 语言 / 许可）
 | ★ | 仓库 | 建仓 | 最后 push | 语言 | 许可 | 它是什么 |
 |---|---|---|---|---|---|---|
-| 388 | `jerrywu001/cc-sessions-viewer` | 2026-05-20 | 2026-09-17 | Rust | MIT | 桌面浏览��，支持 **7 种** agent（cc/codex/grok/kimi/pi/antigravity/opencode）+ 工具管理页 |
+| 388 | `jerrywu001/cc-sessions-viewer` | 2026-05-20 | 2026-09-17 | Rust | MIT | 桌面浏览器，支持 **7 种** agent（cc/codex/grok/kimi/pi/antigravity/opencode）+ 工具管理页 |
 | 372 | `delexw/claude-code-trace` | 2026-03-11 | 2026-09-26 | Rust | MIT | Claude Code session log viewer（JSONL） |
 | 268 | `Continuum-AI-Corp/OrcaReplay` | 2026-08-29 | 2026-09-26 | TS | Apache-2.0 | "Time travel for AI agents. Record, replay, fork, and…" |
 | 110 | `PixelPaw-Labs/codex-trace` | 2026-04-25 | 2026-09-26 | Rust | MIT | Codex CLI session log viewer，Rust/Tauri 桌面 + Web + SSE live tail |
@@ -51,13 +51,30 @@
   该场景的产物天然落在 GitHub PR 评论里 → 平台自带裂变位，竞品全部缺席。
 
 ## 5. 取证命令（可复跑）
+
+**用 `gh`，不要用 `curl`。** 本机 `gh` 已认证（`kevindurant735rocket-creator`，scopes
+`gist` / `read:org` / `repo`），配额 5000 次/小时。未认证的 `api.github.com` 会在
+第 9 个仓库就返回 `API rate limit exceeded` —— 这正是下面这张表最初取不全数的原因。
+
 ```bash
-# 仓库元数据
-curl -s -m 15 -H 'Accept: application/vnd.github+json' https://api.github.com/repos/<owner>/<repo>
+gh auth status                                   # 确认登录与 scopes
+gh api rate_limit --jq '.rate'                   # {"limit":5000,"remaining":5000,...}
+
+# 仓库元数据：star / 建仓日 / 最后 push / 语言 / 许可 / open issues
+gh api repos/<owner>/<repo> --jq \
+  '"\(.full_name) \(.stargazers_count)★ created=\(.created_at[0:10]) pushed=\(.pushed_at[0:10]) \(.language) \(.license.spdx_id // "—") issues=\(.open_issues_count)"'
+
 # 搜索竞品
-curl -s -m 15 -H 'Accept: application/vnd.github+json' \
-  'https://api.github.com/search/repositories?q=agent+session+replay&sort=stars&order=desc&per_page=5'
+gh search repos 'agent session replay' --sort stars --limit 10 --json fullName,stargazersCount,description
+
 # README 原文
-curl -s -m 20 -H 'Accept: application/vnd.github+json' https://api.github.com/repos/<owner>/<repo>/readme
+gh api repos/<owner>/<repo>/readme --jq '.content' | base64 -d
 ```
-注意：未认证调用有速率限制（实测跑到第 9 个仓库时返回 `API rate limit exceeded`），批量取数要控制单次条数。
+
+### 复跑结果（2026-09-27，`gh` 认证后重取）
+
+上表 8 个直接竞品**逐个复核，零漂移**：star 数、建仓日、最后 push 日全部未变。
+唯一修正：`ezra-y/agent-trajectory` 的许可是 **MIT**，此前记为未知。
+
+"停更即无人知晓"这条结论因此更硬了：`Agent-Blackbox` 停在 2026-07-26，
+距今 2 个月，star 仍卡在 76，open issues = 0。

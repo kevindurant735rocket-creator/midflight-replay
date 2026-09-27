@@ -38,7 +38,7 @@ node dist/cli.js replay ~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08
 
 # Claude Code
 node dist/cli.js replay ~/.claude/projects/-Users-*/88095c95-*.jsonl --out /tmp/mf-claude.html
-# → steps 3000/3622   coverage=partial
+# → steps 3000/3111   coverage=partial  unknown=0  compaction=10
 
 open /tmp/mf-codex.html     # drag the axis, click a step, check the header badges
 ```

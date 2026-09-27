@@ -5,6 +5,7 @@
 </p>
 
 <p align="center">
+  <a href="#看它动起来">24s 回放</a> ·
   <a href="#安装">安装</a> ·
   <a href="#两种输出">两种输出</a> ·
   <a href="#诚实的覆盖度">诚实的覆盖度</a> ·
@@ -19,6 +20,34 @@
 </p>
 
 ---
+
+## 看它动起来
+
+本机一条真实 Claude Code 会话——**原始 JSONL 32 MB，解析出 3,111 步，10 次第一手压缩事件**——24 秒回放完。不是 mock 数据，也不是手写 demo 素材：视频里的文件就是 `midflight replay` 对着一条真实会话日志跑出来的。
+
+<p align="center">
+  <img src="docs/demo/demo.webm" alt="32MB Claude Code 会话 24 秒回放：时间轴拖动、上下文锯齿、before-image diff" width="880" controls loop>
+</p>
+
+<p align="center">
+  <a href="docs/demo/poster.png"><img src="docs/demo/poster.png" alt="midflight 回放海报帧" width="880"></a>
+</p>
+
+画面里的每个数字都可复现：
+
+- 左侧主轴是 **3,111 步里显示的 3,000 步**；抽稀横幅直接写明，不假装文件是完整的
+- 绿色面积是**上下文锯齿**：每轮对话往上爬，宿主压缩时掉下来。其中 10 次标了 `⇣ 第一手压缩事件`
+- 右侧是一次真实 `Edit` 的 **before-image**，能看到 agent 实际打进去的补丁，带行号
+- 覆盖度条显示 **52%**：那条会话 244 处编辑里只有 127 处带 before-image，其余只能看到 agent 自述
+
+自己复现：
+
+```bash
+midflight replay ~/.claude/projects/-Users-zhangfengrui/<session>.jsonl --out replay.html
+open replay.html
+```
+
+`docs/demo/` 由 `node scripts/record-demo.mjs <report.html> --out docs/demo` 重新生成。
 
 ## 问题在哪
 
@@ -156,12 +185,19 @@ Claude Code 的 `Edit` 带 `old_string` + `new_string`，`Write` 带完整 `cont
 | 会话 | 大小 | 解析 | 输出 | 步数 | 覆盖判定 |
 |---|---|---|---|---|---|
 | Codex rollout | 109 MB | 379 ms | 3.24 MB | 3,716 / 14,905 | `diff-only` —— 1,720 处 shell 改动，0 处 before-image |
-| Claude Code | 31 MB | 123 ms | 2.05 MB | 3,000 / 3,622 | `partial` —— 244 次编辑，127 次带 before-image |
+| Claude Code | 32 MB | 118 ms | 2.29 MB | 3,000 / 3,111 | `partial` —— 244 次编辑，127 次带 before-image |
 
 第二条诚实规则：适配器无法分类的步会被**标注、计数并渲染**，绝不静默丢弃。Claude Code 会写入
 会话元数据记录（`file-history-snapshot` / `ai-title` / `permission-mode` 等），它们不承载
-agent 动作 —— 上面那条 31MB 会话里有 521 步属于这类（共 3,622 步）。报告头部会把这个数字
-打出来，而不是让 `未知` 这个标签看起来像解析器坏了。
+agent 动作 —— 所以 midflight 现在**认得出**它们，而不是丢进一个桶里：`ai-title` 与
+`agent-name` 直接变成会话标题，`file-history-delta` 归为 chrome，`compact_boundary`
+变成一等的压缩事件。最后这条以前是个沉默的谎报：上面那条 32MB 会话里有 **10** 个
+`compact_boundary`，早期版本把它们当 chrome 吞掉，于是报告写「未观测到压缩事件」。
+
+现在那条会话的 `unknownCount: 0`，全部 3,111 步分布是：1,040 工具调用、1,040 工具输出、
+424 assistant、415 reasoning、121 user、61 note、10 次压缩。**故意不读**的部分写在
+[`docs/KNOWN-GAPS.md`](docs/KNOWN-GAPS.md) —— 包括为什么不解码 `~/.claude/file-history`，
+以及证明这件事的命令。
 
 两行都可以自己复现：
 
