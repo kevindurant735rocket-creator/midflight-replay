@@ -5,9 +5,18 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml/badge.svg" alt="self-replay"></a>
+  <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay.svg" alt="npm version"></a>
+  <a href="#安装"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+</p>
+
+<p align="center">
   <a href="#看它动起来">24s 回放</a> ·
   <a href="#安装">安装</a> ·
   <a href="#两种输出">两种输出</a> ·
+  <a href="#放到-pr-上">action</a> ·
   <a href="#诚实的覆盖度">诚实的覆盖度</a> ·
   <a href="#隐私">隐私</a> ·
   <a href="#为什么不是另外八个工具">竞品定位</a> ·
@@ -161,6 +170,44 @@ npx midflight-replay replay session.jsonl --paste > digest.html
 
 它是一份事后解剖摘要，**不假装**自己是可交互回放。放不下的时候按优先级倒序丢段，
 并且**明说丢了多少**。
+
+---
+
+## 放到 PR 上
+
+大部分审阅者不会去找一个 CLI。action 把摘要放到他们本来就在的地方。
+
+```yaml
+# .github/workflows/agent-audit.yml
+name: agent audit
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kevindurant735rocket-creator/midflight-replay@v0.1.0
+        with:
+          session: auto              # .agent-sessions/ 下最新的 .jsonl
+          # session: logs/last-run.jsonl
+```
+
+它读仓库里已提交的会话日志，生成可直接粘贴的摘要，在 PR 上留 **一条** 评论 ——
+原地更新、不堆叠，所以 40 个 commit 的 PR 不会攒出 40 份一模一样的摘要。
+完整的可交互回放仍然由你自己手动附上；action 只发读得懂的那一半。
+
+**它做不到什么：** CI runner 从来没跑过 Codex 或 Claude Code，所以除非你把日志
+提交进仓库，否则它没有会话可读。把 `session:` 指向仓库里的文件，或者用 `dir:`
+指到你自己的日志目录。
+
+**它花多少：** 一次 `npm ci` 加一次 `tsc`，项目零运行时依赖。本机真实的
+114MB / 30,736 行 / 14,905 步 Codex 会话解析耗时 **433ms**，产出 9,381 字节摘要。
+
+这个仓库在自己的 PR 上跑这个 action ——
+见 [`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml)。
 
 ---
 

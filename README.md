@@ -5,9 +5,19 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml/badge.svg" alt="self-replay"></a>
+  <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay.svg" alt="npm version"></a>
+  <a href="#install"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+</p>
+
+
+<p align="center">
   <a href="#see-it-move">24s replay</a> ·
   <a href="#install">install</a> ·
   <a href="#the-two-outputs">outputs</a> ·
+  <a href="#put-it-on-the-pull-request">action</a> ·
   <a href="#honest-coverage">coverage</a> ·
   <a href="#privacy">privacy</a> ·
   <a href="#faq">faq</a> ·
@@ -181,6 +191,45 @@ to be. If the digest does not fit the budget, sections are dropped in reverse
 priority order and the block **says how many were dropped**.
 
 ---
+
+## Put it on the pull request
+
+Most reviewers never go looking for a CLI. The action puts the digest where they
+already are.
+
+```yaml
+# .github/workflows/agent-audit.yml
+name: agent audit
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kevindurant735rocket-creator/midflight-replay@v0.1.0
+        with:
+          session: auto              # newest .jsonl under .agent-sessions/
+          # session: logs/last-run.jsonl
+```
+
+It picks a committed session log, builds the paste-safe digest, and leaves **one**
+comment on the PR — updated in place, never stacked, so a 40-commit PR does not
+accumulate 40 identical digests. The full interactive replay is still yours to
+attach by hand; the action posts the readable half.
+
+**What it cannot do:** a CI runner has never run Codex or Claude Code, so there is
+no session for it to read unless one is committed. Point `session:` at a file in the
+repo, or set `dir:` to wherever yours live.
+
+**What it costs:** one `npm ci` and one `tsc` on a zero-dependency project. This
+machine's real 114 MB / 30,736-line / 14,905-step Codex session parses in **433 ms**
+and produces a 9,381-byte digest.
+
+This repo runs the action on its own pull requests — see
+[`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml).
 
 ## Honest coverage
 
