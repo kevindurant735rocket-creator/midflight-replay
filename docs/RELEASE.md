@@ -50,7 +50,7 @@ done
 cd ~/Desktop/项目/agent-replay
 npm ci
 npm run typecheck        # exit 0
-npx vitest run           # 63 passed
+npx vitest run           # 70 passed
 npm run build            # exit 0
 node dist/cli.js doctor fixtures/codex-mini.jsonl --json      # exit 0
 node dist/cli.js doctor fixtures/codex-truncated.jsonl --json  # exit 1  (negative test)
@@ -138,24 +138,25 @@ gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md
 ## 5. npm
 
 ```bash
-npm pack --dry-run           # expect: 49.9 kB, 29 files, CHANGELOG.md + README.md + LICENSE present
-npm whoami                   # must be an account that owns the `midflight` name
+npm pack --dry-run           # expect: 148.7 kB, 31 files, CHANGELOG.md + README.md + LICENSE present
+npm whoami                   # must be an account that owns the `midflight-replay` name
 npm publish --access public
-npm view midflight version   # must print 0.1.0
+npm view midflight-replay version   # must print 0.1.0
 ```
 
 Post-publish smoke test, from a clean directory — this is the only test that proves
 `npx` works for a stranger:
 
 ```bash
-cd /tmp && npx -y midflight@0.1.0 doctor ~/Desktop/项目/agent-replay/fixtures/codex-mini.jsonl
+# the package is midflight-replay; the binary it installs is `midflight`
+cd /tmp && npx -y midflight-replay@0.1.0 doctor ~/Desktop/项目/agent-replay/fixtures/codex-mini.jsonl
 ```
 
 ## 6. The 24 hours after
 
 Watch for the three failure modes that actually cost stars, in this order:
 
-1. **`npx midflight` fails** — almost always a missing `dist/` in the tarball, or a
+1. **`npx midflight-replay` fails** — almost always a missing `dist/` in the tarball, or a
    lost shebang. Re-check `npm pack --dry-run` and `head -1 dist/cli.js`.
 2. **The README's numbers are quoted back at you as universal** — they are measured
    on *one* log. Anyone who disputes them should be told to run `doctor` on their own.

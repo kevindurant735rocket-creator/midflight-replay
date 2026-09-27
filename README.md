@@ -369,14 +369,14 @@ whitelisted tags, verified by test to contain no script, no style, no `on*=` han
 and no external reference.
 
 **Why is the package `midflight-replay` when the command is `midflight`?**
-Because the plain name was not available and the mismatch is worth one line of
+Because the plain name was legal but useless, and the mismatch is worth one line of
 explanation rather than an ugly binary. Measured, not assumed:
 
-| name | npm | github |
-|---|---|---|
-| `midflight` | registered, **zero versions** — `npm publish` would fail with EPUBLISHCONFLICT | taken |
-| `agent-replay` | taken — v0.1.1, *"DevTools for replaying AI agent sessions"* | 25+ repos share the name |
-| `midflight-replay` | free (probed 2026-09-27) | free under `kevindurant735rocket-creator` |
+| name | npm | github | verdict |
+|---|---|---|---|
+| `midflight` | **404 — free** | free | free on both, and a bare adjective: `gh search midflight` is a wall of ad/telemetry repos, and the name alone tells a browser nothing |
+| `agent-replay` | **taken** — v0.1.1, *"DevTools for replaying AI agent sessions"* | 25+ repos share the name | a direct competitor owns the npm name; `npm publish` fails with EPUBLISHCONFLICT |
+| `midflight-replay` | **404 — free** | free under `kevindurant735rocket-creator` | **chosen** — free on both, and the name states what the thing is |
 
 `docs/RELEASE.md` keeps the probe so you can re-check before anyone squats it.
 
