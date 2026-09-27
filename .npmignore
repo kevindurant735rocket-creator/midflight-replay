@@ -6,4 +6,5 @@ fixtures/
 .github/
 tsconfig.json
 *.md
+!CHANGELOG.md
 !dist/

@@ -51,6 +51,13 @@ is a safe reset.
 - If it touches parsing, diffs, coverage, or the paste whitelist, say so in the
   description and say which test asserts it.
 
+## Cutting a release
+
+See [`docs/RELEASE.md`](docs/RELEASE.md). It is a runbook, not a policy: every
+command in it has been run on this machine, and each block states the exit code
+you should see. If a command in that file stops being true, the file is a bug —
+fix it in the same PR that broke it.
+
 ## Reporting bugs
 
 Open an issue with: agent (codex / claude-code), session size, `midflight doctor

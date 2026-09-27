@@ -12,7 +12,8 @@
     "midflight": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -26,5 +27,29 @@
     "playwright": "^1.63.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevindurant735rocket-creator/agent-replay.git"
+  },
+  "homepage": "https://github.com/kevindurant735rocket-creator/agent-replay#readme",
+  "bugs": {
+    "url": "https://github.com/kevindurant735rocket-creator/agent-replay/issues"
+  },
+  "author": "kevindurant735rocket-creator",
+  "types": "dist/types.d.ts",
+  "keywords": [
+    "ai-agent",
+    "codex",
+    "claude-code",
+    "replay",
+    "forensics",
+    "postmortem",
+    "observability",
+    "session-log",
+    "jsonl",
+    "pr-review",
+    "developer-tools",
+    "cli"
+  ]
 }
