@@ -5,8 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml/badge.svg" alt="self-replay"></a>
   <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay.svg" alt="npm version"></a>
   <a href="#安装"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
@@ -420,7 +418,7 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 
 ## 路线图
 
-刻意做小。已发货 7 项，接下来的两项背后都有实测证据支撑。
+刻意做小。已发货 8 项，接下来的那一项背后有实测证据支撑。
 
 - [x] Codex + Claude Code 适配器，自动识别
 - [x] 双轴时间轴 + 可点击的上下文构成
@@ -429,8 +427,8 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 - [x] 每份报告都带诚实覆盖判定
 - [x] 默认脱敏、零网络
 - [x] `doctor` 行级失败定位
+- [x] `revert` —— 从报告里撤一步，可 `git apply -R`
 - [ ] **事后解剖检测** —— 标出循环、反复改同一处、上下文将满
-- [ ] **补丁集导出** —— 重建第 N 步的文件状态，可 `git apply -R`
 - [ ] 更多适配器，等真实日志里出现再加
 
 **刻意不做**：服务端、账号、数据库、托管看板、重跑/分叉。每一个都需要一次网络调用，

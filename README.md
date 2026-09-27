@@ -5,8 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/self-replay.yml/badge.svg" alt="self-replay"></a>
   <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay.svg" alt="npm version"></a>
   <a href="#install"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
@@ -21,6 +19,8 @@
   <a href="#honest-coverage">coverage</a> ·
   <a href="#privacy">privacy</a> ·
   <a href="#faq">faq</a> ·
+  <a href="#why-this-and-not-the-other-eight-tools">why not the other eight</a> ·
+  <a href="#roadmap">roadmap</a> ·
   <a href="README.zh-CN.md">中文</a>
 </p>
 
@@ -519,8 +519,8 @@ on the machine quoted above, and the command never touches the network.
 
 ## Roadmap
 
-Deliberately small. Seven things shipped; the next two are the ones with evidence
-behind them.
+Deliberately small. Eight things shipped; the next one is the one with evidence
+behind it.
 
 - [x] Codex + Claude Code adapters, auto-detected
 - [x] dual-axis timeline with clickable context composition
@@ -529,8 +529,8 @@ behind them.
 - [x] honest coverage verdict on every report
 - [x] default-on redaction, zero network
 - [x] `doctor` with line-accurate failure reporting
+- [x] `revert` — undo a step from the report, `git apply -R`-able
 - [ ] **postmortem detection** — flag loops, repeated edits, and near-full context
-- [ ] **patch-set export** — reconstruct file state at step *N*, `git apply -R`-able
 - [ ] more adapters, as they show up in real logs
 
 Not planned, on purpose: a server, an account, a database, a hosted dashboard, a
@@ -544,7 +544,7 @@ thing this project exists to not do.
 ```bash
 npm install          # devDeps only: typescript, vitest, playwright
 npm run build        # tsc -> dist/
-npm test             # 39 unit tests
+npm test             # 111 unit tests
 node scripts/browser-check.mjs out.html out2.html   # 60 browser assertions
 ```
 

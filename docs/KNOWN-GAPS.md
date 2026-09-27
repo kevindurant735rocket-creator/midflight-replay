@@ -92,3 +92,21 @@ What that costs, stated plainly:
 - **No multi-step revert.** One step in, one patch out. A range would be a different
   command with a different blast radius, and the ceiling above is what makes that
   decision easy: it should refuse more than this one does.
+
+## 6. There is no CI badge, because there is no CI running
+
+The two workflow files exist on disk (`.github/workflows/ci.yml`,
+`.github/workflows/self-replay.yml`) and are parked in `.git/info/exclude`, not in
+the tree. The token this machine holds has scopes `gist, read:org, repo`; GitHub
+refuses workflow-file writes without the `workflow` scope, so `gh api --method PUT
+.../contents/.github/workflows/ci.yml` returns HTTP 404. Measured, not assumed.
+
+So the README carried two badges pointing at workflows the remote does not have
+(`gh api repos/.../actions/workflows --jq .total_count` → `0`). Every visitor saw a
+broken image in the first screen. They are removed rather than left as decoration.
+
+**They come back when someone runs `gh auth refresh -h github.com -s workflow` and the
+files are un-excluded and pushed.** That is a two-command job, and until it happens
+this project has no claim to a green build. The local substitute is the three gates
+in `scripts/release.sh`, which do run on every push and are what the release gate
+actually reads.
