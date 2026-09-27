@@ -8,22 +8,38 @@ draft of this file was wrong, so re-run the probe before you trust it again.**
 
 | name | npm | github.com | verdict |
 |---|---|---|---|
-| `midflight` | `200` **but zero versions** | `200` | unusable — an empty shell package that still owns the name, so `npm publish` returns EPUBLISHCONFLICT |
-| `agent-replay` | `200` — v0.1.1, *"DevTools for replaying AI agent sessions"* | free, but **25+ repos share the exact name** | unusable on npm, and a direct competitor there; on GitHub it is legal but invisible in search |
-| `flightrec` | `200` — v0.9.0, *"A flight recorder for Codex sessions"* | `200` | unusable, also a direct competitor |
-| **`midflight-replay`** | **`404`** | **`404`** | **chosen** — free on both, distinctive enough to find, keeps the brand |
+| `midflight` | `404` **free** | `404` | legal, but a bare adjective — `gh search midflight` returns a wall of ad/telemetry repos, and the repo name alone tells a browser nothing |
+| `agent-replay` | `200` — v0.1.1, *"DevTools for replaying AI agent sessions"* | free, but **25+ repos share the exact name** | unusable on npm (a direct competitor owns it), and legal-but-invisible on GitHub |
+| `flightrec` | `200` — v0.9.0, *"A flight recorder for Codex sessions"* | `404` | unusable on npm, also a direct competitor |
+| **`midflight-replay`** | **`404`** | **`404`** | **chosen** — free on both, and the name states what the thing is |
+
+Measured 2026-09-27 21:10 by HTTP status, not by memory:
+
+| probe | result |
+|---|---|
+| `curl -s -o /dev/null -w '%{http_code}' https://registry.npmjs.org/<name>` | `midflight` 404 · `agent-replay` 200 · `flightrec` 200 · `midflight-replay` 404 |
+| `curl -sL -o /dev/null -w '%{http_code}' https://github.com/kevindurant735rocket-creator/<name>` | all four 404 |
+
+An earlier draft of this table claimed `midflight` returned `200` with zero versions.
+That was wrong; it is `404`, i.e. free. It was still not chosen, but for a
+different reason than the one printed above: **discoverability**, not availability.
+Re-probe the four names on the day you publish and expect `midflight-replay` to be
+the only one still 404 on both sides.
 
 So: **repo = npm package = `midflight-replay`**, and the **binary stays `midflight`**.
 The CLI and the package deliberately differ, the same way `@angular/cli` ships `ng`;
 the README Install section says so in one line so nobody files "why don't these match".
 
-Re-probe before publishing (all four return `404` as of 2026-09-27):
+Re-probe before publishing (as of 2026-09-27, `midflight` and `midflight-replay`
+are the two 404s on npm; the other two are taken):
 
 ```bash
-for n in midflight-replay; do
+for n in midflight agent-replay flightrec midflight-replay; do
   echo -n "npm/$n  "; curl -s -o /dev/null -w "%{http_code}\n" "https://registry.npmjs.org/$n"
   echo -n "gh/$n   "; curl -s -o /dev/null -w "%{http_code}\n" -L "https://github.com/kevindurant735rocket-creator/$n"
 done
+# 200 on npm means someone else owns it -> publishing fails with EPUBLISHCONFLICT.
+# Stop here if midflight-replay is not 404 on both lines.
 ```
 
 ---

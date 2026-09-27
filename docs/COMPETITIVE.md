@@ -28,7 +28,7 @@ GitHub 搜竞品会漏掉**只在 npm 发过、GitHub 已删/未建**的那些�
 |---|---|---|---|---|
 | `agent-replay` | **v0.1.1 已占**，`mttetc/agent-replay`；描述 = "DevTools for replaying AI agent sessions — browse, inspect, and debug Claude Code and Cursor sessions with a timeline-based UI" | `mttetc/agent-replay` → **404（仓库已删/转私有）** | **9** | 名字被一个**僵尸包**占了，最后发版 2026-02-16 |
 | `flightrec` | **v0.9.0 已占**，`busminer/flightrec`；描述 = "A flight recorder for Codex sessions" | `busminer/flightrec` ★**0**，建仓日 = 最后 push 日 = 2026-07-15 | **16** | 一次性上传后**再没动过** |
-| `midflight` | 404（`npm view midflight` → E404） | — | — | 名义可注册，但与 binary 同名会让人以为 `npm i midflight` 能装 |
+| `midflight` | **404**（可注册） | 404（可建仓） | **名字合法但没用**：`gh search midflight` 是一堵广告/埋点仓库的墙，且"midflight"一个字不告诉浏览者这是什么 |
 | **`midflight-replay`** | **404** | **404** | — | **选中** |
 
 三条可复现的推论（每条都能被上面数字推翻）：
