@@ -105,6 +105,24 @@ open replay.html
 
 ---
 
+## Don't take our word for it — open one
+
+Three real outputs are committed to this repo. Click, no install, no download,
+no account. Every one is a single file with zero external references.
+
+| | what you get | open it |
+|---|---|---|
+| **Interactive replay** — a Codex session | scrub the timeline, click any step, read the diff | [open](docs/demo-codex.html) · 25 KB |
+| **Interactive replay** — a Claude Code session | the one with compaction sawtooth events | [open](docs/demo-claude.html) · 47 KB |
+| **PR digest** — GitHub-safe | what you actually paste into a review comment | [open](docs/demo-claude-paste.html) · 1 KB |
+
+The third one is the point of the project. GitHub strips `<script>` and
+`<style>`, so every HTML exporter dies on a PR comment; that one is built from
+`details / summary / table / pre / code / div` only, and survives the paste
+intact. It is 1 KB, which is why it gets read.
+
+---
+
 ## The problem
 
 Here is a real session from this machine, measured with `midflight doctor` — no

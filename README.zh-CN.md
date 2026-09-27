@@ -66,6 +66,23 @@ open replay.html
 
 `docs/demo/` 由 `node scripts/record-demo.mjs <report.html> --out docs/demo` 重新生成。
 
+---
+
+## 别信我说的，点开看
+
+仓库里提交了三个真实产物。点开即看 —— 不用装、不用下载、不用注册账号。
+每一个都是零外部依赖的单文件。
+
+| | 你会看到 | 打开 |
+|---|---|---|
+| **交互回放** —— 一条 Codex 会话 | 拖时间轴、点任意一步、读 diff | [打开](docs/demo-codex.html) · 25 KB |
+| **交互回放** —— 一条 Claude Code 会话 | 带压缩锯齿事件的那条 | [打开](docs/demo-claude.html) · 47 KB |
+| **PR 摘要块** —— GitHub 安全 | 你真正贴进 review 评论的那一份 | [打开](docs/demo-claude-paste.html) · 1 KB |
+
+第三个才是这个项目的重点。GitHub 会剥掉 `<script>` 和 `<style>`，所有 HTML
+导出器都会在 PR 评论里死掉；那一份只用 `details / summary / table / pre /
+code / div` 生成，贴进去还能原样存活。它只有 1 KB —— 所以有人会读。
+
 ## 问题在哪
 
 这是本机一条真实会话，用 `midflight doctor` 量出来的，没有四舍五入、没有示意图：
