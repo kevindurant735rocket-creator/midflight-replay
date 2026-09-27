@@ -31,6 +31,10 @@ export interface Finding {
   evidence: string[];
   /** worst first. loop > repeated-edit > near-full-context */
   severity: 1 | 2 | 3;
+  /** 0-based index into the array that was analysed, so a UI can jump straight there.
+   *  It is relative to the steps PASSED IN, not to the file: the HTML report thins a
+   *  session before it analyses anything, so its findings index the displayed steps. */
+  firstStep: number;
 }
 
 const MUTATING = /^(edit|write|multiedit|notebookedit|apply_patch|str_replace|create|update)/i;
@@ -80,6 +84,7 @@ function findLoops(steps: ReplayStep[]): Finding[] {
       out.push({
         kind: 'loop',
         severity: 1,
+        firstStep: head,
         headline: `the same call ran ${run.idx.length} times in a row with identical arguments`,
         evidence: [
           `steps ${head}-${rest[rest.length - 1]}: ${run.fp.length > 160 ? `${run.fp.slice(0, 160)}…` : run.fp}`,
@@ -122,6 +127,7 @@ function findRepeatedEdits(steps: ReplayStep[]): Finding[] {
     out.push({
       kind: 'repeated-edit',
       severity: 2,
+      firstStep: idx[0],
       headline: `${path} was edited ${idx.length} times`,
       evidence: [
         `steps ${idx[0]}-${idx[idx.length - 1]}, ${pct(idx.length / steps.length)} of the session by step count`,
@@ -144,11 +150,12 @@ function findContextPressure(steps: ReplayStep[]): Finding[] {
   let peak = 0;
   let peakTokens = 0;
   let peakWindow = 0;
+  let peakStep = -1;
   let over = 0;
   let unreconciled = 0;
-  for (const u of usage) {
+  usage.forEach((u, ui) => {
     const win = u.contextWindow ?? 0;
-    if (!win) continue;
+    if (!win) return;
     // `input` ALREADY CONTAINS the cached prefix on both hosts (Codex reports
     // input_tokens with cached_input_tokens as a subset of it). Adding the two
     // double counts and put a real session at "263.6% of the window", which is
@@ -159,10 +166,11 @@ function findContextPressure(steps: ReplayStep[]): Finding[] {
       peak = f;
       peakTokens = u.input;
       peakWindow = win;
+      peakStep = steps.indexOf(u);
     }
     if (f >= NEAR_FULL_FRACTION) over += 1;
     if (u.input > win) unreconciled += 1;
-  }
+  });
   if (peakWindow === 0) return [];
   const compactions = steps.filter((s) => s.kind === 'compaction').length;
   if (over === 0 && compactions === 0) return [];
@@ -192,6 +200,7 @@ function findContextPressure(steps: ReplayStep[]): Finding[] {
     {
       kind: 'near-full-context',
       severity: 3,
+      firstStep: peakStep < 0 ? 0 : peakStep,
       headline,
       evidence,
     },

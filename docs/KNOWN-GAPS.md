@@ -133,3 +133,14 @@ It counts. It does not explain, and it has no model in the loop.
   (322,441 tokens against a 243,200-token window). When that happens the tool
   prints the tokens and says the ratio is a floor, instead of printing a
   percentage above 100% as though it were a measurement.
+
+### The report's panel is analysed on the thinned timeline
+
+`midflight replay` drops steps under `--max-steps` before anything else touches them,
+and the postmortem panel in the report is computed on **what is left** — not on the
+whole file. That is deliberate: a finding has to point at a row the reader can click,
+and a step that was thinned away is not a row in that report. So a big session can
+report fewer loops in the report than `midflight postmortem` does on the same file,
+and the report says how many of the original steps survived underneath the panel.
+The CLI is the one to trust for the full count; the panel is the one to trust for
+jumping to a step.

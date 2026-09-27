@@ -415,6 +415,11 @@ kept talking. Thresholds are named constants in [`src/postmortem.ts`](src/postmo
 the bar instead of trusting it. What it does not claim is in
 [KNOWN-GAPS §7](docs/KNOWN-GAPS.md).
 
+The same panel is in the report itself, under the coverage bar: every finding is a
+row, and clicking it jumps the timeline to the step that started it. A reviewer's
+first question about an agent's work is "what went wrong", and until this shipped
+the answer was a timeline you had to read by hand.
+
 ### `revert` — the report's inverse
 
 A report proves what an agent did. `revert` turns one step back into a patch:
@@ -576,7 +581,7 @@ thing this project exists to not do.
 npm install          # devDeps only: typescript, vitest, playwright
 npm run build        # tsc -> dist/
 npm test             # 127 unit tests
-node scripts/browser-check.mjs out.html out2.html   # 60 browser assertions
+node scripts/browser-check.mjs out.html out2.html   # 62 browser assertions on the two fixtures; the count follows the input
 ```
 
 The browser check is a separate command on purpose: it needs a Chromium download, and

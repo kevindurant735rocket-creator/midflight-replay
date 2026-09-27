@@ -42,6 +42,24 @@ for (const f of files) {
   const N = await page.evaluate(() => (typeof N !== 'undefined' ? N : 0));
   ok('step count is positive', N > 0, `N=${N}`);
 
+  // ---- postmortem: the report has to say what went wrong, not only WHEN ----
+  // A timeline tells a reviewer the order of events. The panel is the part that
+  // tells them the session looped, and a panel that renders findings nobody can
+  // reach is decoration, so the click is asserted, not assumed.
+  const pmRows = page.locator('.pm-row');
+  const pmCount = await pmRows.count();
+  const pmClean = await page.locator('.pm-clean').count();
+  ok('postmortem panel present', (await page.locator('.pm').count()) === 1);
+  ok('postmortem is either findings or an explicit clean bill', pmCount > 0 ? pmClean === 0 : pmClean === 1,
+     `rows=${pmCount} clean=${pmClean}`);
+  if (pmCount > 0) {
+    const want = Number(await pmRows.first().getAttribute('data-i'));
+    ok('first finding points at a step inside the session', want >= 0 && want < (await page.evaluate(() => (typeof N !== 'undefined' ? N : 0))), `want=${want}`);
+    await pmRows.first().click();
+    await page.waitForTimeout(150);
+    ok('clicking a finding jumps to its step', (await cur()) === want, `cur=${await cur()} want=${want}`);
+  }
+
   // ---- keyboard scrub ----
   await page.evaluate(() => select(0));
   await page.keyboard.press('ArrowRight');

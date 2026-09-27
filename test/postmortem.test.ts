@@ -182,3 +182,31 @@ describe('postmortem — output', () => {
     expect(out).toContain('Counts over logged steps only');
   });
 });
+
+describe('postmortem — where a finding points', () => {
+  it('firstStep is the index of the first step of the run, into the array given', () => {
+    seq = 0;
+    const steps: ReplayStep[] = [
+      { kind: 'user', ts: seq++, text: 'go' } as ReplayStep,
+      call('exec', '{"cmd":"poll"}'),
+      call('exec', '{"cmd":"poll"}'),
+      call('exec', '{"cmd":"poll"}'),
+    ];
+    const loop = postmortem(steps).find((f) => f.kind === 'loop')!;
+    // step 0 is prose, so the run starts at index 1 — and 1 is what a UI must jump to.
+    expect(loop.firstStep).toBe(1);
+  });
+
+  it('every finding carries an index the report can jump to', () => {
+    seq = 0;
+    const steps: ReplayStep[] = [];
+    for (let i = 0; i < 3; i += 1) steps.push(edit('/repo/a.ts'));
+    steps.push({ kind: 'assistant', ts: seq++, text: 'x' } as ReplayStep);
+    steps.push(usage(95000, 0, 100000));
+    for (const f of postmortem(steps)) {
+      expect(Number.isInteger(f.firstStep)).toBe(true);
+      expect(f.firstStep).toBeGreaterThanOrEqual(0);
+      expect(f.firstStep).toBeLessThan(steps.length);
+    }
+  });
+});

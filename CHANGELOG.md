@@ -21,8 +21,16 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
     because a file removed three times is not churn.
   - **Near-full context** — peak occupancy at or above `NEAR_FULL_FRACTION` (0.85)
     of the reported window, plus first-hand compaction events.
-  - 16 tests. Thresholds are exported constants, not inline numbers, so a reader can
+  - **The same panel is in the report**, under the coverage bar. Every finding is a
+    clickable row that jumps the timeline to the step that started it — a reviewer's
+    first question about an agent's work is "what went wrong", and the report used to
+    only answer "when". It is computed on the *thinned* timeline so every row points
+    at a step that exists in that file; KNOWN-GAPS §7 says so, and says which of the
+    two commands to trust for the full count.
+  - 18 tests. Thresholds are exported constants, not inline numbers, so a reader can
     argue with the bar instead of trusting it.
+  - 4 new browser assertions, one of which caught the first version of the panel
+    rendering findings that no click could reach.
 
 - **`postmortem` found a bug in itself, before anyone else could.** Occupancy was
   first computed as `input + cachedInput`, which double counts (cached tokens are a

@@ -430,6 +430,7 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 - [x] `doctor` 行级失败定位
 - [x] `revert` —— 从报告里撤一步，可 `git apply -R`
 - [x] `postmortem` —— 循环、反复改同一处、上下文压力，全部从日志数出来
+      （同一块面板也进了 HTML 报告：每条发现一行，点一下就跳到起头那一步）
 - [ ] 更多适配器，等真实日志里出现再加 —— 不预先排任何一家
 
 **刻意不做**：服务端、账号、数据库、托管看板、重跑/分叉。每一个都需要一次网络调用，
@@ -443,7 +444,7 @@ npx midflight-replay replay "$HOME"/.claude/projects/*/*.jsonl --out replay.html
 npm install          # 只有 devDeps：typescript、vitest、playwright
 npm run build        # tsc -> dist/
 npm test             # 39 个单测
-node scripts/browser-check.mjs out.html out2.html   # 60 条浏览器断言
+node scripts/browser-check.mjs out.html out2.html   # 两条 fixture 上 62 条浏览器断言；条数随输入变
 ```
 
 浏览器验收是单独一条命令，这是故意的：它要下载 Chromium，CI 不该每次提交都付这个成本。

@@ -2,6 +2,7 @@ import type { ReplayStep, Session } from './types.js';
 import { thin, thinBanner, type ThinOptions } from './compact.js';
 import { buildContextTrack, projectContextTrack, CATEGORIES, CATEGORY_LABEL } from './context.js';
 import { computeCoverage, VERDICT_LABEL } from './coverage.js';
+import { postmortem } from './postmortem.js';
 import { isEditTool, diffFromArgs } from './diff.js';
 
 export interface ReportOptions extends ThinOptions {
@@ -43,6 +44,10 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
       unexplainedDrops: ctx.unexplainedDrops,
     },
     coverage,
+    // Analysed on the SAME thinned timeline the report shows, so a finding's step number
+    // is a step the reader can click. Counting on the full session would point at rows
+    // that are not in this file.
+    postmortem: postmortem(t.steps),
     thin: {
       kept: t.kept,
       total: t.total,
@@ -109,6 +114,13 @@ h1 small{color:var(--dim);font-weight:400;margin-left:8px}
 .cov .fill{height:100%;background:var(--acc)}
 .cov.full .fill{background:#3fb950}.cov.partial .fill{background:#d29922}.cov.diff-only .fill{background:#f85149}
 .cov .why{color:var(--dim);font-size:12px}
+.pm{margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#0b0f14}
+.pm-row{display:flex;gap:6px;align-items:baseline;padding:4px 6px;border-radius:4px;cursor:pointer;font-size:12px}
+.pm-row:hover{background:#161b22}
+.pm-row .tag{flex:none}
+.pm-row .pm-step{flex:none;margin-left:auto;color:var(--dim);white-space:nowrap}
+.pm .why{color:var(--dim);font-size:12px;margin-top:6px}
+.pm-clean{color:var(--dim);font-size:12px}
 main{display:grid;grid-template-columns:1fr 1fr;gap:0;height:calc(100vh - 150px)}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
 .pane{overflow:auto;padding:0 0 40px}
@@ -381,10 +393,26 @@ function header(){
     (c.withBeforeBackup>0 ? '（日志内联 <b>'+c.withBeforeLog+'</b> + 备份还原 <b>'+c.withBeforeBackup+'</b>）' : '')+
     (c.backups===0 && c.edits>0 ? ' · 本机无该会话 file-history 备份' : '')+
     (c.missing>0 ? ' · 仍缺 <b>'+c.missing+'</b>' : '')+'</div></div>';
+  if(D.postmortem&&D.postmortem.length){
+    const PMK={loop:'死循环','repeated-edit':'反复改同一处','near-full-context':'上下文压力'};
+    hh+='<div class="pm"><b>事后解剖</b> · '+D.postmortem.length+' 项发现<div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
+    for(const f of D.postmortem){
+      hh+='<div class="pm-row" data-i="'+f.firstStep+'" title="'+esc(f.evidence.join(' / '))+'"><span class="tag">'+esc(PMK[f.kind]||f.kind)+'</span><span>'+esc(f.headline)+'</span><span class="pm-step">第 '+(f.firstStep+1)+' 步</span></div>';
+    }
+    hh+='</div>';
+  } else {
+    hh+='<div class="pm"><b>事后解剖</b> · 未发现<div class="pm-clean">日志里没有同参连调、没有反复改同一处、没有上下文压力。</div></div>';
+  }
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+
     (D.parseErrorCount>5?" 等 "+D.parseErrorCount+" 行":"")+'。原始行号已记录，可用 midflight doctor 查看完整原因。</div>';
-  h.innerHTML=hh; return h;
+  h.innerHTML=hh;
+  // Wired here, not on the global step list: these rows live in the header, and a
+  // panel that renders findings nobody can reach is decoration.
+  for(const r of h.querySelectorAll('.pm-row')){
+    r.addEventListener('click',()=>{ const i=+r.getAttribute('data-i'); if(i>=0) select(i); });
+  }
+  return h;
 }
 
 document.body.appendChild(header());
