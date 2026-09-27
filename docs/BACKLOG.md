@@ -4,6 +4,11 @@ This file is the *input side* of "从 star 反馈反推迭代". It exists so tha
 the repo goes public, star/issue signals land in a place that already knows how to
 rank them instead of a place that starts arguing from scratch.
 
+The P0 and P2 rows below are already written up as filing-ready issues in
+[`docs/ISSUES/`](ISSUES/); `scripts/release.sh` prints the `gh issue create` line
+for each one on launch day. They are filed by hand on purpose — a tracker that
+fills itself before anyone has used the tool reads as vapourware.
+
 Two rules, both inherited from [KNOWN-GAPS.md](KNOWN-GAPS.md):
 
 1. **A row is either measured or it is not on the board.** No "should be easy".

@@ -111,6 +111,22 @@ Enable these on the repo after push:
 - **Social preview** — `docs/images/replay-claude.png` is already 880px wide and
   is the first image in the README, so it renders correctly as the preview.
 
+## 3.5 Or just run the script
+
+Steps 1–5 above are the manual form, kept because each step is worth being able to
+do by hand. `scripts/release.sh` is the same sequence with dry-run as the
+**default**, a clean-tree check, and a preflight that fails loudly instead of
+half-launching:
+
+```bash
+bash scripts/release.sh                # prints all of it, changes nothing
+bash scripts/release.sh --yes          # GitHub + npm
+bash scripts/release.sh --yes --no-npm # GitHub now, npm after you run `npm login`
+```
+
+It also prints the `gh issue create` command for each filing-ready body in
+[`docs/ISSUES/`](ISSUES/), which is the first half of the star-feedback loop.
+
 ## 4. Tags and release
 
 ```bash
