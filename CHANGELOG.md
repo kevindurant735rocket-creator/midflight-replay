@@ -66,6 +66,16 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Edits near the end of a file produced diffs `git apply` could not place.** A
+  trailing newline is a line terminator, not an empty final line, but the splitter
+  kept the phantom — so every hunk within three lines of EOF carried a context line
+  the file did not contain, and `git apply --check` rejected a perfectly good patch.
+  Found by installing the packed tarball into a clean prefix and reverting a real
+  report; the earlier test had passed only because its change sat outside the
+  context window. Files with no trailing newline now also get git's
+  `\ No newline at end of file` marker, which they need to be appliable at all.
+  A create no longer reports a phantom empty added line either.
+
 - Edits larger than `--per-step-chars` no longer lose their diff. The per-step clip made
   the stored tool arguments unparseable JSON, which silently erased the applied text
   (and therefore the diff). The applied text is now lifted from the unredacted input,

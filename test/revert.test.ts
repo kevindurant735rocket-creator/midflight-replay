@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { planRevert, listRevertable, isReversible, readReportPayload, type RevertOk } from '../src/revert.js';
+import { diffFromArgs } from '../src/diff.js';
 import type { ReplayStep } from '../src/types.js';
 
 const ROOT = '/repo';
@@ -136,6 +137,42 @@ describe('revert — the patch git can actually place', () => {
     expect(readOnly.ok === false && readOnly.code).toBe('NOT_A_FILE_EDIT');
     const clipped = planRevert([step({ name: 'Edit', rawArgs: '{"file_path":' })], 0, dir);
     expect(clipped.ok === false && clipped.code).toBe('NO_FILE_PATH');
+  });
+
+  it('an edit within 3 lines of EOF still applies (the phantom-final-line bug)', () => {
+    // The trailing `\n` is a terminator, not an empty last line. Treating it as one
+    // put a context line in the hunk that the file does not contain, and `git apply`
+    // rejected a perfectly good patch. Found by the npm-tarball smoke test.
+    const b4 = 'l1\nl2\nl3\nl4\nl5\n';
+    const a4 = 'l1\nl2\nl3\nl4\nl5 CHANGED\n';
+    const dir = repoWith({ 'eof.txt': a4 });
+    const s = step({ name: 'Edit', rawArgs: JSON.stringify({ file_path: join(dir, 'eof.txt') }), beforeImage: b4 });
+    const r = planRevert([s], 0, dir) as RevertOk;
+    expect(r.patch).not.toMatch(/\n $/m);          // no context line that is just a space
+    expect(r.patch.split('\n').filter((l) => l === ' ')).toHaveLength(0);
+    writeFileSync(join(dir, 'p.diff'), r.patch, 'utf8');
+    expect(() => git(dir, 'apply', '--check', '-R', 'p.diff')).not.toThrow();
+    git(dir, 'apply', '-R', 'p.diff');
+    expect(readFileSync(join(dir, 'eof.txt'), 'utf8')).toBe(b4);
+  });
+
+  it('a file with no trailing newline applies (git needs the \\ No newline marker)', () => {
+    const b5 = 'x\ny\nz';
+    const a5 = 'x\ny CHANGED\nz';
+    const dir = repoWith({ 'nonl.txt': a5 });
+    const s = step({ name: 'Edit', rawArgs: JSON.stringify({ file_path: join(dir, 'nonl.txt') }), beforeImage: b5 });
+    const r = planRevert([s], 0, dir) as RevertOk;
+    expect(r.patch).toContain('\\ No newline at end of file');
+    writeFileSync(join(dir, 'p.diff'), r.patch, 'utf8');
+    expect(() => git(dir, 'apply', '--check', '-R', 'p.diff')).not.toThrow();
+    git(dir, 'apply', '-R', 'p.diff');
+    expect(readFileSync(join(dir, 'nonl.txt'), 'utf8')).toBe(b5);
+  });
+
+  it('a create no longer reports a phantom empty added line', () => {
+    const d2 = diffFromArgs(JSON.stringify({ file_path: '/x/c.ts', content: 'hello\n' }), undefined, 'hello\n');
+    expect(d2.added).toBe(1);
+    expect(d2.lines.map((l) => l.text)).toEqual(['hello']);
   });
 
   it('never writes to the working tree', () => {

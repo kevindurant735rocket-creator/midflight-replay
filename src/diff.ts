@@ -31,8 +31,27 @@ export function isEditTool(name: string): boolean {
   return EDIT_TOOLS.test(name);
 }
 
+/**
+ * Split into real lines.
+ *
+ * A trailing `\n` is a line terminator, not an empty final line. `split('\n')` says
+ * otherwise, and the phantom it leaves behind is not cosmetic: it becomes an extra
+ * context line in every hunk near end-of-file, and `git apply` then cannot find it.
+ * (Found by the tarball smoke test — an edit 5 lines from EOF produced a patch that
+ * `--check` rejected.) So the phantom is dropped here, once, for every caller.
+ */
 function lines(s: string): string[] {
-  return s.split('\n');
+  if (s === '') return [];
+  const out = s.split('\n');
+  if (out[out.length - 1] === '') out.pop();
+  return out;
+}
+
+/** Same split, plus whether the text ended with a newline — `unifiedPatch` needs that to
+ *  emit git's `\ No newline at end of file` marker for the last line. */
+function splitForPatch(s: string): { ls: string[]; finalNl: boolean } {
+  if (s === '') return { ls: [], finalNl: true };
+  return { ls: lines(s), finalNl: s.endsWith('\n') };
 }
 
 /** Longest-common-subsequence table, bounded. Real edit hunks are small; big inputs bail to a
@@ -141,7 +160,9 @@ export function diffFromArgs(rawArgs: string, beforeImage?: string, newText?: st
  * stands now), and this renders them the way git expects. See src/revert.ts.
  */
 export function unifiedPatch(beforeText: string, afterText: string, relPath: string, contextLines = 3): string {
-  const d = lcsDiff(lines(beforeText), lines(afterText));
+  const A = splitForPatch(beforeText);
+  const B = splitForPatch(afterText);
+  const d = lcsDiff(A.ls, B.ls);
   const out: string[] = [`--- a/${relPath}`, `+++ b/${relPath}`];
   // Mark which diff lines fall inside a hunk: a change plus up to `contextLines` of context
   // on each side, splitting when two change-runs are farther apart than 2*contextLines.
@@ -170,6 +191,10 @@ export function unifiedPatch(beforeText: string, afterText: string, relPath: str
     for (let j = i; j <= end; j++) {
       const L = d[j];
       out.push((L.kind === 'add' ? '+' : L.kind === 'del' ? '-' : ' ') + L.text);
+      // git's marker for a final line with no trailing newline. Without it a patch
+      // touching the last line of such a file is rejected by `git apply`.
+      if (L.kind !== 'add' && L.a === A.ls.length && !A.finalNl) out.push('\\ No newline at end of file');
+      if (L.kind !== 'del' && L.b === B.ls.length && !B.finalNl) out.push('\\ No newline at end of file');
     }
     i = end + 1;
   }
