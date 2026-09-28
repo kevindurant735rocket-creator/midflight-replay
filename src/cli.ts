@@ -215,12 +215,17 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
   const st = statsOf(session, lines, Date.now() - t0);
   const bytes = statSync(path).size;
   const ok = session.parseErrors.length === 0 && session.steps.length > 0;
+  const adapter = await detectAdapter(path);
   const payload = {
     ok,
     file: path,
     bytes,
-    adapter: await detectAdapter(path),
-    agent: session.meta.agent,
+    adapter,
+    // The fallback adapter stamps its own name, so a file we could not identify used to
+    // come back as `"agent": "codex"` next to `"adapter": "unknown"`. Both fields are quoted
+    // verbatim when someone opens an issue, and a Gemini or Aider log filed as a codex log
+    // sends the triage down the wrong path. When we could not name the format, say so.
+    agent: adapter === 'unknown' ? 'unknown' : session.meta.agent,
     sessionId: session.meta.sessionId,
     cliVersion: session.meta.cliVersion,
     cwd: session.meta.cwd,

@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// fileURLToPath, not URL.pathname: this checkout sits under a Chinese-named directory.
+const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 /**
  * `midflight replay` returned 0 for any file that existed. Point it at a
@@ -197,5 +201,38 @@ describe('doctor speaks the reader\'s language when a log will not read', () => 
     expect(out).toContain('每类步数：');
     expect(out).toMatch(/(用户消息|工具调用) \d/);
     expect(out).not.toMatch(/user \d|tool_call \d/);
+  });
+});
+
+/**
+ * Issue #3 asks strangers to paste `midflight doctor <file> --json` so we can triage their
+ * host. The file falls back to the codex parser, and the fallback stamped its own name on
+ * the result: an Aider or Gemini log came back `"agent": "codex"`. Whoever filed it would
+ * have handed us a wrong host name and we would have believed them. `adapter` already said
+ * `unknown` in the same object, so the two fields contradicted each other on screen.
+ */
+describe('doctor does not name a host it could not identify', () => {
+  const run = (file: string) =>
+    spawnSync(process.execPath, ['dist/cli.js', 'doctor', file, '--json'], { encoding: 'utf8' });
+  const read = (r: ReturnType<typeof run>) => JSON.parse(r.stdout);
+
+  it('reports agent: unknown for a file that is not a session log', () => {
+    const f = join(tmpdir(), `midflight-not-a-log-${process.pid}.jsonl`);
+    writeFileSync(f, 'random text, definitely not a session log\n', 'utf8');
+    try {
+      const d = read(run(f));
+      expect(d.ok).toBe(false);
+      expect(d.adapter).toBe('unknown');
+      expect(d.agent).toBe('unknown');
+    } finally {
+      unlinkSync(f);
+    }
+  });
+
+  it('still names the host when the format is recognised', () => {
+    const d = read(run(join(repoRoot, 'fixtures', 'codex-mini.jsonl')));
+    expect(d.adapter).toBe('codex');
+    expect(d.agent).toBe('codex');
+    expect(d.ok).toBe(true);
   });
 });

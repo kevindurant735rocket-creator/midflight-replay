@@ -6,7 +6,20 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`doctor --json` no longer names a host it could not identify.** An unrecognised log falls back to
+  the codex parser, and the fallback stamped its own name on the result: a file that is not a session
+  log came back `"adapter": "unknown", "agent": "codex"`. Issue #3 asks strangers to paste that JSON so
+  a host can be triaged, so a Gemini or Aider log filed under the codex name would have sent the
+  triage down the wrong path. `agent` now reads `unknown` whenever the format could not be named, and
+  still names the host when it can.
+
 ### Added
+
+- **The demo is on the first screen of the English README.** It sat 58 lines down, behind a code
+  block; the Chinese README had it on line 26 the whole time. Two tests now hold the position, so the
+  picture cannot quietly slide back below the fold.
 
 - **It is on npm.** `midflight-replay@0.1.2` is published, so `npx midflight-replay` runs without
   cloning anything. The check was made against the registry rather than against a local build:
