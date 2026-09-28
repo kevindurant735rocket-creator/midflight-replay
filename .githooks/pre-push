@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Runs the same list CI runs, before the objects leave the machine.
+#
+# Why this exists when ci.yml already does the same thing: ci.yml is parked off-tree on
+# this checkout because the OAuth token has no `workflow` scope, so GitHub Actions has
+# never run this project. Rather than let "verified on every push" be true only on a
+# machine that happens to remember to run the gates, the same file is the hook.
+#
+# The moment `gh auth refresh -h github.com -s workflow` succeeds and the workflow is
+# pushed, this hook is redundant and can be removed with `npm run hooks:uninstall`.
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)"
+echo "pre-push: running the full check list (same file CI runs)"
+if bash scripts/ci-checks.sh; then
+  exit 0
+fi
+echo
+echo "pre-push: refusing to push. Fix the above, or push with --no-verify on purpose."
+exit 1
