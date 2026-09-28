@@ -60,7 +60,7 @@ describe('report data can never break out of its own script element', () => {
   it('a report built from the fixture is syntactically complete', () => {
     const r = spawnSync(process.execPath, ['dist/cli.js', 'replay', 'fixtures/script-escape.jsonl', '--out', '/tmp/mf-escape.html'], { encoding: 'utf8' });
     expect(r.status).toBe(0);
-    expect(`${r.stdout}${r.stderr}`).toMatch(/wrote/);
+    expect(`${r.stdout}${r.stderr}`).toContain('已写入');
     const html = readFileSync('/tmp/mf-escape.html', 'utf8');
     expect(html.endsWith('</script>\n</body></html>')).toBe(true);
     expect(html.split('</script>').length - 1).toBe(1);

@@ -322,7 +322,14 @@ export async function parseAnthropicShaped(
       parseErrors.push({ line: lineNo, error: `handler failed: ${(e as Error).message}`, raw: rawLine.slice(0, 500) });
     }
     if (tsStolen && steps.length > before) {
-      warnings.push(`line ${lineNo}: no timestamp on a replayable record, reused the previous one`);
+      // lastTs starts at 0, so the FIRST such record has no previous timestamp to
+      // reuse — saying it did was a small lie on the screen a user reads when
+      // their log misbehaves.
+      warnings.push(
+        lastTs === 0
+          ? `line ${lineNo}: no timestamp on a replayable record, dated at session start`
+          : `line ${lineNo}: no timestamp on a replayable record, reused the previous one`,
+      );
     }
   }
 

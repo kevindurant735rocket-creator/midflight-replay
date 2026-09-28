@@ -10,6 +10,7 @@ import { readVersion } from './version.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { postmortem, renderPostmortem } from './postmortem.js';
+import { VERDICT_LABEL } from './coverage.js';
 import { scanAgents, formatAgentTable } from './agents.js';
 import { installSkill, presentTargets, TARGETS, SKILL_NAME, type InstallTarget } from './install.js';
 
@@ -142,6 +143,64 @@ async function cmdInstall(args: string[]): Promise<number> {
   return conflicts > 0 ? 1 : 0;
 }
 
+/**
+ * The record kinds the parsers emit, in the words a reader would use. Unknown
+ * kinds fall through unchanged — a new adapter's kind should still print.
+ */
+const KIND_LABEL: Record<string, string> = {
+  user: '用户消息',
+  assistant: '助手回复',
+  reasoning: '推理',
+  tool_call: '工具调用',
+  tool_output: '工具输出',
+  turn_start: '轮次开始',
+  turn_end: '轮次结束',
+  usage: '用量',
+  compaction: '上下文压缩',
+  file_event: '文件改动',
+  note: '备注',
+  unknown: '不认识',
+};
+
+/**
+ * `JSON.parse` failures arrive as V8 sentences: "Unexpected token 'g', \"garbage{\"
+ * is not valid JSON". On the FAIL screen that is a second, unexplained language.
+ * Say what happened in the reader's words and keep V8's own words as the reason,
+ * so nothing is lost and nothing is invented.
+ */
+function explainParseError(raw: string): string {
+  // V8 prefixes most of these with `invalid JSON: `; match past the prefix.
+  const m = /(?:^|:\s*)Unexpected end of JSON input/.test(raw);
+  if (m) return '这一行没写完就被截断了（V8：Unexpected end of JSON input）';
+  const t = /(?:^|:\s*)Unexpected token '(.+?)'/.exec(raw);
+  if (t) return `从第 ${t[1].length} 个字符开始就不对，V8 认不出（Unexpected token '${t[1]}'）`;
+  if (/not valid JSON/.test(raw)) return '这一行不是合法的 JSON';
+  return raw;
+}
+
+/** Warnings are raised in English near the parsers; the FAIL screen speaks Chinese. */
+function warningText(w: string): string {
+  if (/no sessionId seen|no session_meta line found/.test(w)) return '日志里没写会话 ID，标题是推断出来的';
+  if (/session header is inferred/.test(w)) return '会话标题是推断出来的';
+  if (/^format not detected/.test(w)) {
+    const m = /with the (\S+) adapter/.exec(w);
+    return `认不出这是哪种会话日志，勉强用 ${m ? m[1] : '默认'} 适配器读了一遍`;
+  }
+  if (/no timestamp on a replayable record|missing\/invalid timestamp/.test(w)) {
+    // Two spellings upstream ("no timestamp on a replayable record" /
+    // "missing/invalid timestamp"). Same fact, so one Chinese sentence — and
+    // drop the English tail entirely rather than appending a translation to it.
+    const n = /^line (\d+): /.exec(w);
+    const where = n ? `第 ${n[1]} 行` : '有一行';
+    return /dated at session start/.test(w)
+      ? `${where}没有时间戳，只能按会话开始的时间算`
+      : `${where}没有可用的时间戳，时间是沿用上一条算的`;
+  }
+  if (/^(\d+) line\(s\) failed to parse$/.test(w)) return `有 ${/^(\d+)/.exec(w)![1]} 行没读懂`;
+  if (/^file-history:/.test(w)) return w;
+  return w;
+}
+
 async function cmdDoctor(path: string, json: boolean): Promise<number> {
   if (!exists(path)) {
     const msg = `not a file: ${path}`;
@@ -182,22 +241,39 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
   };
   if (json) console.log(JSON.stringify(payload, null, 2));
   else {
-    console.log(`${ok ? 'OK  ' : 'FAIL'} ${path}`);
-    console.log(`  adapter=${payload.adapter} agent=${payload.agent} lines=${payload.lines} steps=${payload.steps} (${st.durationMs}ms, ${(bytes / 1048576).toFixed(1)} MiB)`);
+    // This is the screen a user reads when something is wrong with their log.
+    // Every word on it is theirs: an English V8 message ("invalid JSON: Unexpected
+    // token 'g'") on a screen titled FAIL tells a reader nothing about what to
+    // do next. `--json` keeps the English keys on purpose — that is a machine
+    // contract, not a sentence anyone reads.
+    console.log(`${ok ? '能读' : '读不了'}  ${path}`);
+    console.log(
+      `  格式 ${payload.adapter} · 来源 ${payload.agent} · 共 ${payload.lines} 行，解析出 ${payload.steps} 步` +
+        ` · ${st.durationMs}ms · ${(bytes / 1048576).toFixed(1)} MiB`,
+    );
     const kinds = Object.entries(st.byKind).sort((a, b) => b[1] - a[1]);
-    console.log(`  steps by kind: ${kinds.map(([k, v]) => `${k} ${v}`).join('  ')}`);
+    // Only print the breakdown when there is one — a bare "steps by kind:" with
+    // nothing after it reads like the tool forgot to finish its sentence.
+    if (kinds.length > 0) {
+      console.log(`  每类步数：${kinds.map(([k, v]) => `${KIND_LABEL[k] ?? k} ${v}`).join(' · ')}`);
+    }
     if (payload.parseErrorCount) {
-      console.log(`  ${payload.parseErrorCount} bad line(s); first:`);
-      for (const e of session.parseErrors.slice(0, 5)) console.log(`    line ${e.line}: ${e.error}`);
+      console.log(`  有 ${payload.parseErrorCount} 行读不懂，最前面的几行：`);
+      for (const e of session.parseErrors.slice(0, 5)) {
+        console.log(`    第 ${e.line} 行：${explainParseError(e.error)}`);
+      }
+      if (payload.parseErrorCount > 5) console.log(`    …… 还有 ${payload.parseErrorCount - 5} 行没显示`);
     }
     if (payload.fileHistoryBackups > 0 || payload.fileHistoryJoins > 0) {
       const h = payload.fileHistory;
       console.log(
-        `  file-history: ${payload.fileHistoryBackups} backup(s); ${payload.fileHistoryJoins} edit(s) matched` +
-          (h ? ` — recovered ${h.recovered}, cross-checked ${h.agree + h.disagree} (${h.disagree} disagree), untracked ${h.untracked}` : ''),
+        `  备份还原：找到 ${payload.fileHistoryBackups} 个备份，${payload.fileHistoryJoins} 处编辑对上了` +
+          (h
+            ? `，其中 ${h.recovered} 处只能靠备份还原，${h.agree + h.disagree} 处和日志逐字核对过（${h.disagree} 处不一致），${h.untracked} 处没盯上`
+            : ''),
       );
     }
-    for (const w of session.warnings) console.log(`  warn: ${w}`);
+    for (const w of session.warnings) console.log(`  注意：${warningText(w)}`);
   }
   return ok ? 0 : 1;
 }
@@ -321,7 +397,15 @@ async function cmdReplay(path: string, argv: string[]): Promise<number> {
         ),
       );
     } else {
-      console.error(`wrote ${out}  ${(r.bytes / 1048576).toFixed(2)} MiB  steps ${r.kept}/${r.total}  coverage=${r.coverageVerdict}  parse=${parseMs}ms`);
+      // The first line a user reads after the tool succeeds. It led with an
+      // English verb and printed the coverage verdict as the raw enum
+      // `coverage=partial` while the rest of the CLI spoke Chinese — and the
+      // Chinese for that verdict already existed (VERDICT_LABEL), used by the
+      // report itself. Same words in both places or the two disagree.
+      console.error(
+        `已写入 ${out}  ${(r.bytes / 1048576).toFixed(2)} MiB  ${r.kept}/${r.total} 步  ` +
+          `撤回：${VERDICT_LABEL[r.coverageVerdict as keyof typeof VERDICT_LABEL] ?? r.coverageVerdict}  解析 ${parseMs}ms`,
+      );
     }
   } else {
     process.stdout.write(r.html);
@@ -425,7 +509,7 @@ async function cmdRevert(argv: string[]): Promise<number> {
   const out = argValue(argv, '--out');
   if (out) {
     writeFileSync(out, r.patch, 'utf8');
-    console.error(`wrote ${out}  step ${r.step}  ${r.path}  +${r.added} -${r.removed}  来源：${revertSourceLabel(r.source)}`);
+    console.error(`已写入 ${out}  第 ${r.step} 步  ${r.path}  +${r.added} -${r.removed}  来源：${revertSourceLabel(r.source)}`);
     console.error(`apply it backwards with:  git apply -R ${out}`);
   } else {
     process.stdout.write(r.patch);

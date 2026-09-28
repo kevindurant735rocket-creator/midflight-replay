@@ -21,6 +21,21 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   `连续 3 次`: the range counts every step, the run counts only tool calls, so the two numbers
   disagreed. The steps that actually repeated are now named (`第 893、897、901 步`) and the
   arguments are still quoted — that line is the proof, the headline is the signpost.
+- **`doctor` now speaks one language on the failure screen.** It printed `FAIL`, then
+  `adapter=unknown agent=codex lines=2 steps=0`, then V8's own sentence
+  (`invalid JSON: Unexpected token 'g'`), then `2 bad line(s)` — a second, unexplained
+  language on the one screen a user reaches when their log will not read. The verdict,
+  the counts, the record kinds (`每类步数：工具调用 127 · 助手回复 89`) and every parse
+  failure are now in the reader's words, with V8's wording kept only as the reason. The
+  dangling `steps by kind:` with nothing after it is gone. `--json` keeps its English
+  keys on purpose: that is a machine contract, not a sentence.
+- **Success lines agree with the report.** `replay` and `revert` announced success as
+  `wrote demo.html  steps 382/382  coverage=partial`; the report itself already labels
+  that verdict `部分可撤回`, so the terminal and the page used two vocabularies for one
+  fact. Both now read `已写入 …  382/382 步  撤回：部分可撤回`.
+- **A first record with no timestamp no longer claims it reused a previous one.** There
+  was no previous timestamp to reuse; it is dated at the session start, and the warning
+  says exactly that.
 
 ## [0.1.2] - 2026-09-28
 
