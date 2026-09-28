@@ -1,0 +1,103 @@
+#!/usr/bin/env node
+/**
+ * The README's first screen makes numeric claims about real files on the machine that
+ * built it. Those numbers rot: a session file grows, a step is reclassified, and the
+ * README keeps asserting the old figure. This re-derives each claim from the file it
+ * names and fails when the README contradicts the file.
+ *
+ * It does NOT fail when the file is simply absent — a fresh clone on a laptop has no
+ * 109 MiB rollout, and pretending that is a failure would train people to ignore it.
+ * Absent file -> UNVERIFIED. File present and different -> FAIL.
+ */
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// fileURLToPath, not .pathname: this repo lives at a path with non-ASCII characters and
+// URL.pathname percent-encodes them, which then reads as "file not found" for every claim.
+const README = fileURLToPath(new URL('../README.md', import.meta.url));
+const cli = fileURLToPath(new URL('../dist/cli.js', import.meta.url));
+
+function walk(dir, out, depth = 0) {
+  if (depth > 6) return;
+  let entries;
+  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) walk(p, out, depth + 1);
+    else if (e.name.endsWith('.jsonl')) out.push({ p, size: statSync(p).size });
+  }
+}
+
+function pickBiggest(root) {
+  const files = [];
+  walk(root, files);
+  files.sort((a, b) => b.size - a.size);
+  return files[0]?.p ?? null;
+}
+
+const codexRoot = join(homedir(), '.codex', 'sessions');
+const claudeRoot = join(homedir(), '.claude', 'projects');
+
+/** each claim: what the README says, and how to measure the truth */
+const claims = [
+  {
+    what: 'the 109 MiB Codex session has 14,906 steps',
+    said: /14,906/,
+    file: () => pickBiggest(codexRoot),
+    minBytes: 100 * 1024 * 1024,
+    measure: (f) => Number(JSON.parse(run(['doctor', f, '--json'])).steps),
+    truth: 14906,
+  },
+  {
+    what: 'the 32 MB Claude Code session has 3,111 steps',
+    said: /3,111/,
+    file: () => pickBiggest(claudeRoot),
+    minBytes: 30 * 1024 * 1024,
+    measure: (f) => Number(JSON.parse(run(['doctor', f, '--json'])).steps),
+    truth: 3111,
+  },
+];
+
+function run(args) {
+  return execFileSync(process.execPath, [cli, ...args], { encoding: 'utf8', maxBuffer: 1 << 28 });
+}
+
+const readme = existsSync(README) ? readFileSync(README, 'utf8') : '';
+let bad = 0, checked = 0, unverifiable = 0;
+
+for (const c of claims) {
+  if (!c.said.test(readme)) {
+    console.log(`  · ${c.what} — claim is gone from the README, nothing to check`);
+    continue;
+  }
+  const f = c.file();
+  if (!f || statSync(f).size < c.minBytes) {
+    console.log(`  – ${c.what} — UNVERIFIED: no matching file on this machine (not a failure)`);
+    unverifiable++;
+    continue;
+  }
+  let got;
+  try {
+    got = c.measure(f);
+  } catch (e) {
+    console.log(`  – ${c.what} — UNVERIFIED: doctor failed on ${f} (${e.message.split('\n')[0]})`);
+    unverifiable++;
+    continue;
+  }
+  checked++;
+  if (got === c.truth) {
+    console.log(`  ✓ ${c.what} — measured ${got} on ${f.split('/').pop().slice(0, 34)}…`);
+  } else {
+    console.error(`  ✗ ${c.what} — README says ${c.truth}, the file says ${got} (${f})`);
+    bad++;
+  }
+}
+
+if (bad > 0) {
+  console.error(`CLAIMS-FAIL ${bad} README number(s) contradict the file they name`);
+  process.exit(1);
+}
+console.log(`CLAIMS-OK checked=${checked} unverifiable-here=${unverifiable}`);

@@ -45,6 +45,9 @@ ac 4 "repo settings open" node scripts/verify-repo-settings.mjs
 # AC5 the first screen sells it: demo + one runnable command, both asserted
 ac 5 "README first screen" npm run --silent check:readme
 
+# AC5b the README's first-screen numbers still match the files they name
+ac 5 "README numbers vs real files" node scripts/verify-claims.mjs
+
 # AC6 typecheck + every internal link resolve
 ac 6 "typecheck and links" bash -c 'npm run --silent typecheck && npm run --silent check:links && echo TSC_OK LINKS_OK'
 

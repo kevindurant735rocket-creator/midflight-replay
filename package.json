@@ -35,6 +35,7 @@
     "smoke:real:ci": "node scripts/real-log-smoke.mjs --limit 40",
     "smoke:browser:real": "node scripts/browser-real-hosts.mjs",
     "check:repo": "node scripts/verify-repo-settings.mjs",
+    "check:claims": "node scripts/verify-claims.mjs",
     "acceptance": "bash scripts/acceptance.sh"
   },
   "devDependencies": {

@@ -52,10 +52,10 @@ one that actually installs.</sub>
 <p align="center"><sub>The real thing, moving. 16 seconds of a 32 MB Claude Code session &mdash; 3,111 parsed steps, 10 first-hand compaction events. No mock data: the file was produced by <code>midflight replay</code> against a session log the agent wrote about its own work.</sub></p>
 
 <p align="center">
-  <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109 MiB Codex session: 14,905 steps, 30,736 log lines, opened in under half a second" width="880">
+  <img src="docs/images/replay-codex-109mb.png" alt="midflight replaying a real 109 MiB Codex session: 14,906 steps, 30,736 log lines, opened in under half a second" width="880">
 </p>
 
-<p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,905 parsed steps &mdash; turned into a 3.4 MiB single file in <strong>0.46 s</strong>. The code in the picture is the actual session log, not a mock.</sub></p>
+<p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,906 parsed steps &mdash; turned into a 3.4 MiB single file in <strong>0.46 s</strong>. The code in the picture is the actual session log, not a mock.</sub></p>
 
 ---
 
@@ -152,7 +152,7 @@ rounding, no illustration:
 | | |
 |---|---|
 | log size | **109 MiB** |
-| steps | **14,905** |
+| steps | **14,906** |
 | tool calls | **3,689** |
 | of those, file mutations | **1,720** — every one carried by a shell command |
 | before-images recorded | **0** |
@@ -337,7 +337,7 @@ The full experience. Single file, everything inline.
 - **Compaction markers** — where context was compacted, drawn on the axis
 - **Honest coverage bar** — see below
 
-Measured on real data: 4,016 of 14,905 steps kept from a 109 MiB session, 3.38MB output,
+Measured on real data: 4,016 of 14,906 steps kept from a 109 MiB session, 3.38MB output,
 scrub under 100ms per step.
 
 ### 2. `--paste` — the GitHub-safe digest
@@ -390,7 +390,7 @@ no session for it to read unless one is committed. Point `session:` at a file in
 repo, or set `dir:` to wherever yours live.
 
 **What it costs:** one `npm ci` and one `tsc` on a zero-dependency project. This
-machine's real 109 MiB (114,325,714 bytes) / 30,736-line / 14,905-step Codex session parses in **under
+machine's real 109 MiB (114,325,714 bytes) / 30,736-line / 14,906-step Codex session parses in **under
 500 ms** and produces a 9,381-byte digest.
 
 This repo runs the action on its own pull requests — see
@@ -418,7 +418,7 @@ Measured, not assumed:
 
 | Session | Size | Parse | Output | Steps | Coverage |
 |---|---|---|---|---|---|
-| Codex rollout | 109 MiB | ~0.4 s | 3.38 MiB | 4,016 / 14,905 | `diff-only` — 1,720 shell-carried mutations, 0 before-images |
+| Codex rollout | 109 MiB | ~0.4 s | 3.38 MiB | 4,016 / 14,906 | `diff-only` — 1,720 shell-carried mutations, 0 before-images |
 | Claude Code | 31 MiB | ~0.13 s | 2.19 MiB | 3,000 / 3,111 | `partial` — 244 edits, 127 with before-image |
 
 A second honesty rule: steps the adapter cannot classify are labelled, counted and

@@ -9,7 +9,7 @@ Reference sessions:
 | id | host | file | size |
 |---|---|---|---|
 | **C** | claude-code | `~/.claude/projects/-Users-zhangfengrui/88095c95-….jsonl` | 31 MiB, 3,111 steps |
-| **X** | codex | `~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-01a0b440-….jsonl` | 109 MiB, 14,905 steps |
+| **X** | codex | `~/.codex/sessions/2026/09/23/rollout-2026-09-23T16-24-08-01a0b440-….jsonl` | 109 MiB, 14,906 steps |
 
 ## 1. Recovered: `~/.claude/file-history` before-images
 
@@ -69,7 +69,7 @@ curve.
 
 ## 4. `parseErrors` are counted, not fatal
 
-Session **X** yields 30 unparseable lines out of 14,905 (0.2%). They are listed in the
+Session **X** yields 30 unparseable lines out of 14,906 (0.2%). They are listed in the
 report footer with their line numbers. `midflight doctor` exits non-zero on them.
 
 ## 5. Undo exists, but it is a patch, not a button
