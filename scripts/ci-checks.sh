@@ -56,6 +56,20 @@ else
   ok "truncated session rejected with non-zero exit"
 fi
 
+step "the front-page promise: the 60-second demo actually runs"
+# The README's first section is a copy-paste. Until this ran in CI it was the one
+# command on the page that nothing checked, which is exactly how a front page rots.
+run "demo-60s.sh, bundled fixture" bash -c '
+  D=$(mktemp -d "${TMPDIR:-/tmp}/mf-demo-XXXXXX")
+  MIDFLIGHT_DEMO_OUT="$D/demo.html" bash scripts/demo-60s.sh >"$D/log" 2>&1
+  rc=$?
+  if [ $rc -ne 0 ]; then tail -5 "$D/log"; find "$D" -depth -delete; exit $rc; fi
+  [ -s "$D/demo.html" ] || { echo "demo produced no file"; find "$D" -depth -delete; exit 1; }
+  node dist/cli.js doctor "$D/demo.html" >/dev/null 2>&1 || true
+  grep -q "const D = " "$D/demo.html" || { echo "demo output is not a midflight report"; find "$D" -depth -delete; exit 1; }
+  echo "DEMO-OK $(wc -c <"$D/demo.html" | tr -d " ") bytes"
+  find "$D" -depth -delete'
+
 step "a real browser, on the reports the tool actually ships"
 if [ ! -d node_modules/playwright ] && [ $CI -eq 1 ]; then
   run "install chromium" npx playwright install --with-deps chromium

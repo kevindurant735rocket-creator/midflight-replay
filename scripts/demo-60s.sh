@@ -11,7 +11,9 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-OUT="demo-60s.html"
+# CI runs this on every push, so the destination is overridable: the demo would
+# otherwise overwrite the committed demo-60s.html and dirty the tree.
+OUT="${MIDFLIGHT_DEMO_OUT:-demo-60s.html}"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 
