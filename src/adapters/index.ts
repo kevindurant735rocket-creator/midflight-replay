@@ -1,5 +1,4 @@
 import { createReadStream, openSync, readSync, closeSync } from 'node:fs';
-import { createInterface } from 'node:readline';
 import type { ParseStats, Session } from '../types.js';
 import { parseCodex, type CodexParseOptions } from './codex.js';
 import { parseClaude, type ClaudeParseOptions } from './claude.js';
@@ -7,14 +6,32 @@ import { parseClaude, type ClaudeParseOptions } from './claude.js';
 export type AdapterName = 'codex' | 'claude-code';
 export type ParseOptions = CodexParseOptions & ClaudeParseOptions;
 
-/** Read a JSONL file as a line stream so 100MB+ sessions never land in memory at once. */
+/**
+ * Read a JSONL file as a line stream so 100MB+ sessions never land in memory at once.
+ *
+ * Splits on byte 0x0A only, and only ever after. `node:readline` is not usable here: it
+ * also breaks on U+2028 LINE SEPARATOR and U+2029 PARAGRAPH SEPARATOR, which RFC 8259
+ * allows unescaped inside a JSON string. A real 114MB Codex rollout carrying a research
+ * plan in a tool output was cut into 3 fragments at one such character, and all three
+ * fragments then failed `JSON.parse` — the session was reported as corrupt when the file
+ * on disk was not. Measured on that file: 30 phantom parse errors, 0 real ones.
+ *
+ * Working on Buffers also means a multi-byte character split across a chunk boundary is
+ * reassembled by the decoder instead of being truncated.
+ */
 export async function* readLines(path: string): AsyncGenerator<string> {
-  const rl = createInterface({ input: createReadStream(path, { encoding: 'utf8' }), crlfDelay: Infinity });
-  try {
-    for await (const line of rl) yield line;
-  } finally {
-    rl.close();
+  const stream = createReadStream(path);
+  let carry: Buffer = Buffer.alloc(0);
+  for await (const chunk of stream) {
+    const buf = carry.length === 0 ? (chunk as Buffer) : Buffer.concat([carry, chunk as Buffer]);
+    let start = 0;
+    for (let nl = buf.indexOf(0x0a, start); nl !== -1; nl = buf.indexOf(0x0a, start)) {
+      yield buf.toString('utf8', start, nl);
+      start = nl + 1;
+    }
+    carry = start === 0 ? buf : Buffer.from(buf.subarray(start));
   }
+  if (carry.length > 0) yield carry.toString('utf8');
 }
 
 function sniffFirstObject(path: string, sampleBytes: number): any | null {

@@ -6,6 +6,19 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **A valid Codex rollout was reported as corrupt.** `node:readline` — the line reader
+  behind every session parse — also breaks on `U+2028` LINE SEPARATOR and `U+2029`
+  PARAGRAPH SEPARATOR, which RFC 8259 permits unescaped inside a JSON string. One such
+  character inside a tool output split a record in three, and all three fragments then
+  failed `JSON.parse`. `readLines` now splits on byte `0x0A` only, and does it on Buffers
+  so a multi-byte character split across a 64 KiB read boundary is reassembled rather than
+  truncated. Measured on the real 114 MiB session that exposed it: **30 phantom parse
+  errors, `ok: false` → `ok: true`, and one step recovered that was being dropped** (the
+  fragment carrying the rest of that record). Same file, 30 736 physical lines before and
+  after — only the reader changed. 6 regression tests lock it.
+
 ### Added
 
 - **`postmortem` — counts loops, repeated edits, and context pressure.** The last
