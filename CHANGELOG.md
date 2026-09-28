@@ -6,6 +6,8 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-28
+
 ### Fixed
 
 - **The coverage bar no longer contradicts the sentence under it.**
