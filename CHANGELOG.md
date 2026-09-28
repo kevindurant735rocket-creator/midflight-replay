@@ -25,6 +25,14 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The tarball gate could only pass on a machine that already had an agent installed.** Its
+  `install --dry-run` line ran the subcommand with no target, which is the form that asks the
+  machine "which agents do you have?" - so on a clean CI runner, where there are none, the command
+  answered "no known agent home found" and exited 2, and the gate reported a broken package. It
+  names `codex` now and runs in a throwaway `HOME`, and the flag is checked instead of assumed: a
+  dry run must leave that `HOME` without a single file, and the same command with no agent home
+  must still exit 2 rather than claim success.
+
 - **The tarball gate could fail on a tarball that was fine.** It piped `tar tzf` into
   `grep -q` under `set -o pipefail`, so either program's exit status decided the verdict —
   `grep -q` leaves at the first match, which can kill `tar` with SIGPIPE and turn a good

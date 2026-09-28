@@ -99,7 +99,18 @@ for c in $CMDS; do
     doctor|postmortem) "$BIN" "$c" "$CLAUDE_FIX" >/dev/null 2>&1 || fail "$c exited non-zero" ;;
     stats)   "$BIN" "$c" "$CODEX_FIX"  >/dev/null 2>&1 || fail "$c exited non-zero" ;;
     replay)  continue ;;          # covered above
-    install) "$BIN" "$c" --dry-run >/dev/null 2>&1 || fail "$c --dry-run exited non-zero" ;;
+    # `--dry-run` with no target asks the machine which agents it has, so it could only pass on
+    # a machine that already had one: on a clean CI runner it correctly answered "no known agent
+    # home found" and exited 2, and the gate called that a failure of the package. Name the
+    # target, then check the promise the flag makes - a dry run writes nothing at all.
+    install)
+      H="$T/dryhome"; mkdir -p "$H"
+      HOME="$H" "$BIN" "$c" codex --dry-run >/dev/null 2>&1 || fail "$c --dry-run exited non-zero"
+      [ -z "$(find "$H" -type f -print -quit)" ] || fail "$c --dry-run wrote a file"
+      if HOME="$H" "$BIN" "$c" >/dev/null 2>&1; then
+        fail "$c with no agent home should exit 2, not succeed silently"
+      fi
+      ;;
     *)       HOME="$T/fakehome" "$BIN" "$c" >/dev/null 2>&1 || fail "$c exited non-zero" ;;
   esac
 done
