@@ -8,6 +8,18 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Dropping steps is now stated, not implied.** A 6,267-step session replayed with the
+  default 3,000-step ceiling printed `3000/6267 步` and stopped. The numbers looked like a
+  formatting detail, so a user opened the report, found half the conversation gone, and had
+  no way back to the flag that caused it. The terminal now prints the same sentence the
+  report page does: how many steps were dropped, which kinds, and that `--max-steps` keeps
+  more. (Report page, terminal and `thinBanner` share one string — they cannot drift.)
+- **The thinning banner answers in the report's own words.** It listed what it dropped by
+  the parser's enums (`reasoning 729 · assistant 800`) while every step row three lines
+  below said 推理 / 助手. One page, two vocabularies, and the reader had to guess which half
+  spoke English. Dropped kinds now use the same Chinese labels as the timeline, with the
+  raw kind kept for any adapter that introduces a new one.
+
 - **`revert --list` no longer prints a padded internal enum.** The source column read
   `[log         ]` / `[file-history]` — machine padding in the one screen where a user
   decides which edit to undo. Both sources now use the Chinese words already settled

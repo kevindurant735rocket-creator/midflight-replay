@@ -4,6 +4,7 @@ import { detectAdapter, parseSession, statsOf } from './adapters/index.js';
 import { redact } from './redact.js';
 import { readReportPayload, planRevert, listRevertable } from './revert.js';
 import { buildReport } from './report.js';
+import { thinBanner } from './compact.js';
 import { buildPaste, assertPasteSafe } from './paste.js';
 import { writeFileSync } from 'node:fs';
 import { readVersion } from './version.js';
@@ -406,6 +407,11 @@ async function cmdReplay(path: string, argv: string[]): Promise<number> {
         `已写入 ${out}  ${(r.bytes / 1048576).toFixed(2)} MiB  ${r.kept}/${r.total} 步  ` +
           `撤回：${VERDICT_LABEL[r.coverageVerdict as keyof typeof VERDICT_LABEL] ?? r.coverageVerdict}  解析 ${parseMs}ms`,
       );
+      // `3000/6172 步` in the success line above is the same fact the report page spells
+      // out. On the terminal it looked like a formatting artifact, so a user replaying a
+      // long session opened the file, found half the conversation missing, and had no way
+      // back to the flag that caused it. Same sentence as the report, same words, no drift.
+      if (r.truncated) console.error(`提示：${thinBanner(r.kept, r.total, r.droppedByKind)}`);
     }
   } else {
     process.stdout.write(r.html);

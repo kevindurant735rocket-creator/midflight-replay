@@ -100,10 +100,15 @@ describe('W3 thinning policy (never silently drop)', () => {
     expect(r.kept).toBe(3711 + r.steps.filter((s) => s.kind !== 'tool_call').length);
     expect(r.droppedByKind.tool_call).toBeUndefined();
     const b = thinBanner(r.kept, r.total, r.droppedByKind);
-    expect(b).toContain('user');
-    expect(b).toContain('assistant');
+    // The banner speaks the report's vocabulary, not the parser's enums.
+    expect(b).toContain('用户消息');
+    expect(b).toContain('助手回复');
+    expect(b).not.toContain('reasoning');
     expect(b).toContain('--max-steps');
-    expect(b).not.toContain('tool_call');
+    // The tail promises tool calls survived; the dropped list must not contradict that.
+    const dropped = b.slice(b.indexOf('（丢弃'), b.indexOf('）'));
+    expect(dropped).not.toContain('工具调用');
+    expect(b).toContain('保留全部工具调用与压缩事件');
   });
   it('drops nothing and reports no breakdown when the session fits', () => {
     const steps: ReplayStep[] = Array.from({ length: 5 }, (_, i) => ({ kind: 'user', ts: i, text: `m${i}` }));

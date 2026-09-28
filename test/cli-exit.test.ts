@@ -57,6 +57,38 @@ describe('replay exit code tells success from an unreadable file', () => {
     expect(r.stderr).not.toMatch(/coverage=|steps \d/);
   });
 
+  it('never lets thinning look like a formatting quirk: the terminal names what it dropped', () => {
+    // A long session replayed with the default 3000-step ceiling printed `3000/6172 步`
+    // and stopped. Half the conversation was gone, the numbers looked like a formatting
+    // detail, and nothing pointed at --max-steps — the flag that caused it. The report
+    // page already spelled this out; the terminal was the only place that stayed quiet.
+    const long = join(dir, 'long.jsonl');
+    // A real Codex rollout line, not a hand-rolled shape: the first version of this
+    // fixture used a record shape no adapter claims, every step came back "不认识", and
+    // the test passed for the wrong reason.
+    const lines = Array.from({ length: 40 }, (_, i) =>
+      JSON.stringify({
+        timestamp: new Date(1700000000 + i * 1000).toISOString(),
+        type: 'response_item',
+        payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: `第 ${i} 句` }] },
+      }),
+    );
+    writeFileSync(long, lines.join('\n') + '\n', 'utf8');
+    const r = spawnSync(
+      process.execPath,
+      ['dist/cli.js', 'replay', long, '--out', join(dir, 'long.html'), '--max-steps', '5'],
+      { encoding: 'utf8' },
+    );
+    expect(r.status).toBe(0);
+    // How many, which kinds, and the flag that turns it back on.
+    expect(r.stderr).toContain('提示：');
+    expect(r.stderr).toMatch(/丢弃 35 步/);
+    expect(r.stderr).toContain('用户消息');
+    expect(r.stderr).toContain('--max-steps');
+    // Same words the report page uses, so neither place invents its own vocabulary.
+    expect(r.stderr).not.toMatch(/\buser \d/);
+  });
+
   it('a real session still succeeds and warns when only some lines are bad', () => {
     const mixed = join(dir, 'mixed.jsonl');
     writeFileSync(

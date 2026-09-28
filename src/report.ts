@@ -18,6 +18,10 @@ export interface ReportResult {
   kept: number;
   total: number;
   coverageVerdict: string;
+  /** True when thin() had to drop rows. The CLI needs this to stop printing a bare
+   *  `3000/6172 步` that reads like a formatting quirk instead of half a missing session. */
+  truncated: boolean;
+  droppedByKind: Record<string, number>;
 }
 
 /**
@@ -92,7 +96,7 @@ export function buildReport(session: Session, opts: ReportOptions = {}): ReportR
         `Refusing to ship a half report. Try --max-steps or --per-step-chars.`,
     );
   }
-  return { html, bytes, kept: t.kept, total: t.total, coverageVerdict: coverage.verdict };
+  return { html, bytes, kept: t.kept, total: t.total, coverageVerdict: coverage.verdict, truncated: t.truncated, droppedByKind: t.droppedByKind };
 }
 
 /** Exposed so the CLI can report coverage without building a full report. */

@@ -288,6 +288,21 @@ for (const f of files) {
   );
   ok('no row blames the reader for the CLI\'s own markup', rawChrome.length === 0, rawChrome.join(' // '));
 
+  // ---- regression: the thinning banner must not answer in the parser's enums ----
+  // The report labels every step row 推理 / 助手, but the banner that lists what the
+  // ceiling dropped answered `reasoning 729 · assistant 800`. Two vocabularies on one
+  // page, and the reader had to guess which half of the file spoke English.
+  const banner = await page.evaluate(() => {
+    const b = document.querySelector('.banner');
+    return { truncated: !!(typeof D !== 'undefined' && D.thin && D.thin.truncated), text: b ? b.innerText : '' };
+  });
+  const bannerText = banner.text;
+  if (banner.truncated) {
+    ok('the dropped-step banner is in the report\'s own words', /丢弃/.test(bannerText) && !/\b(reasoning|assistant|tool_output|user)\b/.test(bannerText), bannerText.slice(0, 160));
+  } else {
+    ok('this report was not thinned (banner check skipped)', true, bannerText.slice(0, 80));
+  }
+
   ok('no requests fired during interaction', reqs.length === 0, `got ${reqs.length}`);
   await ctx.close();
 }

@@ -137,9 +137,31 @@ export function thin(steps: ReplayStep[], opts: ThinOptions = {}): ThinResult {
  * like a rounding artifact, "dropped 11,189 · reasoning 10,203 · assistant 800" tells a
  * reviewer that the part they most wanted to read is the part that is gone.
  */
+/**
+ * Kind names a reader can act on, in the report's own words. The banner named the
+ * dropped kinds by their internal enum (`reasoning`, `assistant`) while every step row
+ * three lines below said 推理 / 助手 — same page, two vocabularies, and the reader had to
+ * guess which half of the file spoke English. Unknown kinds fall through unchanged: a new
+ * adapter's kind should still print rather than vanish.
+ */
+export const THIN_KIND_CN: Record<string, string> = {
+  user: '用户消息',
+  assistant: '助手回复',
+  reasoning: '推理',
+  tool_call: '工具调用',
+  tool_output: '工具输出',
+  turn_start: '轮次开始',
+  turn_end: '轮次结束',
+  usage: '用量',
+  compaction: '上下文压缩',
+  file_event: '文件改动',
+  note: '备注',
+  unknown: '不认识',
+};
+
 export function thinBanner(kept: number, total: number, droppedByKind: Record<string, number> = {}): string {
   const entries = Object.entries(droppedByKind).sort((a, b) => b[1] - a[1]);
-  const shown = entries.slice(0, 3).map(([k, n]) => `${k} ${n.toLocaleString('en-US')}`);
+  const shown = entries.slice(0, 3).map(([k, n]) => `${THIN_KIND_CN[k] ?? k} ${n.toLocaleString('en-US')}`);
   if (entries.length > 3) shown.push(`另 ${entries.length - 3} 类`);
   const dropped = total - kept;
   const detail = shown.length ? `（丢弃 ${dropped.toLocaleString('en-US')} 步 · ${shown.join(' · ')}）` : '';
