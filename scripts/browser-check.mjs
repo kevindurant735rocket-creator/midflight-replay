@@ -263,6 +263,31 @@ for (const f of files) {
   });
   ok('scrub averages under 100ms/step', ms < 100, `${ms.toFixed(2)}ms`);
 
+  // ---- regression: no step may wear the Unix epoch as its clock ----
+  // A record with no timestamp of its own is dated at the session start, i.e. 0.
+  // new Date(0) prints 1970-01-01, which on a real Claude session was the very
+  // first row of the detail pane and read like a broken clock.
+  const epoch = await page.evaluate(() => {
+    const out = [];
+    for (let i = 0; i < N; i++) {
+      if (!S[i].ts) { select(i); if (/1970|1971/.test(document.querySelector('#detail').innerText)) out.push(i); }
+    }
+    select(0);
+    return out;
+  });
+  ok('a step with no timestamp says so instead of printing 1970', epoch.length === 0, `steps=${epoch.join(',')}`);
+
+  // ---- regression: the CLI's own plumbing is not the reader's own words ----
+  // Claude Code writes <command-name>/model</command-name> and
+  // <local-command-caveat> into the USER turn. Shown raw, the list asked the
+  // reader to explain their own CLI and printed XML in the process.
+  const rawChrome = await page.evaluate(() =>
+    [...document.querySelectorAll('.row')]
+      .filter((r) => /^用户/.test(r.children[1].innerText) && /<[a-z-]+-(name|message|stdout|caveat)[ >]/.test(r.children[2].innerText))
+      .map((r) => r.innerText.slice(0, 80)),
+  );
+  ok('no row blames the reader for the CLI\'s own markup', rawChrome.length === 0, rawChrome.join(' // '));
+
   ok('no requests fired during interaction', reqs.length === 0, `got ${reqs.length}`);
   await ctx.close();
 }

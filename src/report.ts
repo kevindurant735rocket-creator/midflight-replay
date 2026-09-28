@@ -180,6 +180,12 @@ const el = (t,cls,h)=>{const e=document.createElement(t); if(cls)e.className=cls
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const kb = n => n>1e6 ? (n/1048576).toFixed(1)+"M" : n>1e3 ? (n/1024).toFixed(1)+"k" : String(n);
 const kindOf = i => (S[i]||{}).kind || "unknown";
+// Claude Code injects its own plumbing into the user turn: a slash command the
+// reader never typed (/model), the command's stdout, and a "Caveat" footer. They
+// arrive as user records, so the list credited them to the reader ("用户") and
+// asked them to explain their own CLI. Name them for what they are.
+const CHROME = /^<(command-name|local-command-stdout|local-command-caveat)[ >]/;
+const labelOf = s => (s.kind==="user" && CHROME.test(s.text||"") ? "命令行" : (KIND_CN[s.kind]||s.kind));
 const colorOf = i => "var("+(KIND_COLOR[kindOf(i)]||"--s-unknown")+")";
 let cur = -1, playing = false, timer = null;
 
@@ -294,7 +300,7 @@ function drawRows(){
       const r=el("div","row"+(i===cur?" sel":""));
       const prev = i>0? S[i-1].ts : s.ts;
       const dt = i>0? " +"+Math.max(0,Math.round((s.ts-prev)/1000))+"s" : "";
-      r.innerHTML='<div class="i">#'+(i+1)+'</div><div class="k" style="color:'+colorOf(i)+'">'+esc(KIND_CN[k]||k)+
+      r.innerHTML='<div class="i">#'+(i+1)+'</div><div class="k" style="color:'+colorOf(i)+'">'+esc(labelOf(s))+
         (k==="compaction"?" ⇣":"")+'</div><div class="p">'+esc(preview(s))+'</div>';
       r.title="t+"+dt;
       r.dataset.i = String(i);
@@ -309,9 +315,28 @@ function drawRows(){
   };
   box._paint=paint; paint(); return box;
 }
+// The raw text of a CLI-injected turn is XML plumbing wrapped around one fact:
+// which slash command ran, or what it printed. Show the fact.
+function chrome(s){
+  if(s.kind!=="user") return "";
+  const t = String(s.text||"");
+  if(!CHROME.test(t)) return "";
+  const grab = re => { const m = re.exec(t); return m ? m[1].trim() : ""; };
+  // A caveat or an output line often arrives with no command-name in the same
+  // record, so read those first — otherwise they fall through to a shrug.
+  const out = grab(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/);
+  if(out) return "命令输出："+out;
+  const cav = grab(/<local-command-caveat>([\s\S]*?)<\/local-command-caveat>/);
+  if(cav) return "命令行说明："+cav;
+  const raw = grab(/<command-name>([\s\S]*?)<\/command-name>/);
+  if(!raw) return "（命令行的附带信息）";
+  const name = raw.replace(/^\//,"");
+  const msg = grab(/<command-message>([\s\S]*?)<\/command-message>/);
+  return msg && msg!==raw && msg!==name ? "执行了命令 /"+name+"："+msg : "执行了命令 /"+name;
+}
 function preview(s){
   switch(s.kind){
-    case "user": case "assistant": return s.text;
+    case "user": case "assistant": return chrome(s) || s.text;
     case "reasoning": return s.summary;
     case "tool_call": return s.name+"  "+String(s.args||"").slice(0,160);
     case "tool_output": return String(s.output||"").slice(0,200);
@@ -331,9 +356,15 @@ function detail(){
   box.id = "detail"; // select() swaps this node in; without the id the pane never updates
   if(cur<0){ box.innerHTML='<h2>详情</h2><div class="empty">未选择步骤</div>'; return box; }
   const s=S[cur], k=s.kind;
-  let h='<h2><span class="tag" style="color:'+colorOf(cur)+'">'+esc(KIND_CN[k]||k)+'</span>第 '+(cur+1)+' / '+N+' 步</h2>';
-  h += '<div class="kv">时间 <b>'+new Date(s.ts).toISOString().replace("T"," ").slice(0,19)+'</b>';
-  if(s.ts-S[0].ts>=0) h += ' · 相对 <b>+'+fmtDur(s.ts-S[0].ts)+'</b>';
+  let h='<h2><span class="tag" style="color:'+colorOf(cur)+'">'+esc(labelOf(s))+'</span>第 '+(cur+1)+' / '+N+' 步</h2>';
+  // A record with no timestamp of its own is dated at the session start, i.e. 0,
+  // which would print the Unix epoch on the first step of a real session. Kept
+  // to one line: this text ships inside every generated report.
+  if(!s.ts) h += '<div class="kv">时间 <b>未知</b> · 这条记录自己没写时间，显示顺序仍然准确';
+  else {
+    h += '<div class="kv">时间 <b>'+new Date(s.ts).toISOString().replace("T"," ").slice(0,19)+'</b>';
+    if(s.ts-S[0].ts>=0) h += ' · 相对 <b>+'+fmtDur(s.ts-S[0].ts)+'</b>';
+  }
   if(k==="usage") h += ' · 上下文占用 <b>'+(s.contextWindow? (100*s.input/s.contextWindow).toFixed(1)+"% ("+kb(s.input)+"/"+kb(s.contextWindow)+")" : kb(s.input))+'</b>';
   h += '</div>';
   if(s.kind==="reasoning"||s.kind==="user"||s.kind==="assistant") h += "<pre>"+esc(s.text||s.summary)+"</pre>";

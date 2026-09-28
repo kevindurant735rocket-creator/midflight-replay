@@ -36,6 +36,16 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 - **A first record with no timestamp no longer claims it reused a previous one.** There
   was no previous timestamp to reuse; it is dated at the session start, and the warning
   says exactly that.
+- **No step wears the Unix epoch as its clock.** A record with no timestamp is dated at
+  the session start, so `new Date(0)` printed `1970-01-01 00:00:00` on the *first* step of a
+  real Claude session — the first thing in the detail pane, and indistinguishable from a real
+  1970 timestamp. The pane now says `时间 未知 · 这条记录自己没写时间，显示顺序仍然准确`.
+- **The CLI's own plumbing is no longer billed to the reader.** Claude Code writes
+  `<command-name>/model</command-name>` and `<local-command-caveat>` into the *user* turn, so
+  the list showed `<command-name>/model</command-name> <command-message>mo…` under a `用户`
+  label and asked the reader to account for their own CLI. Those rows are now `命令行`, reading
+  `执行了命令 /model`, `命令输出：Set model to …`, `命令行说明：Caveat: …`. Row kind is unchanged,
+  so counts, the timeline strip and postmortem are untouched.
 
 ## [0.1.2] - 2026-09-28
 
