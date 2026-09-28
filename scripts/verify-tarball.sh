@@ -27,8 +27,16 @@ TGZ=$(npm pack --pack-destination "$T" 2>/dev/null | tail -1)
 echo "  packed $TGZ ($(du -h "$T/$TGZ" | cut -f1))"
 
 # The registry serves exactly this file list. dist must be in it, or the bin is a dead path.
-tar tzf "$T/$TGZ" | grep -q '^package/dist/cli.js$' || fail "dist/cli.js is not in the tarball"
-tar tzf "$T/$TGZ" | grep -q '^package/README.md$' || fail "README.md is not in the tarball"
+#
+# The listing is read into a variable instead of piped into `grep -q`. Under `set -o pipefail`
+# a pipeline reports the last non-zero status of any stage, and `grep -q` exits at the first
+# match, so `tar` can be killed by SIGPIPE and the gate then fails on a tarball that is
+# perfectly fine. That is not hypothetical: the first run this file ever had on a Linux
+# runner said "dist/cli.js is not in the tarball" about a tarball that contained it.
+LISTING=$(tar tzf "$T/$TGZ") || fail "the packed tarball is unreadable"
+has() { printf '%s\n' "$LISTING" | grep -qx "$1"; }
+has package/dist/cli.js || { printf '%s\n' "$LISTING" | head -20 >&2; fail "dist/cli.js is not in the tarball"; }
+has package/README.md  || { printf '%s\n' "$LISTING" | head -20 >&2; fail "README.md is not in the tarball"; }
 
 npm i -g --prefix "$T/prefix" "$T/$TGZ" >/dev/null 2>&1 || fail "clean-prefix install failed"
 BIN="$T/prefix/bin/midflight"
@@ -53,7 +61,7 @@ CODEX_FIX="$PKG/fixtures/codex-mini.jsonl"
 # every entry package.json#files promises must really be in the tarball
 for want in $(node -p "require('./package.json').files.filter(f=>!f.endsWith('/')).join(' ')" 2>/dev/null); do
   case "$want" in
-    *.md|*.jsonl|*.pb) tar tzf "$T/$TGZ" | grep -q "^package/$want$" || fail "package.json#files lists $want but the tarball does not contain it" ;;
+    *.md|*.jsonl|*.pb) has "package/$want" || fail "package.json#files lists $want but the tarball does not contain it" ;;
   esac
 done
 

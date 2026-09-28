@@ -25,6 +25,14 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The tarball gate could fail on a tarball that was fine.** It piped `tar tzf` into
+  `grep -q` under `set -o pipefail`, so either program's exit status decided the verdict —
+  `grep -q` leaves at the first match, which can kill `tar` with SIGPIPE and turn a good
+  tarball into "dist/cli.js is not in the tarball". The first run this gate ever had on a
+  Linux runner reported exactly that about a tarball that contained the file. The listing is
+  read into a variable now and grepped there, and a failure prints the listing, so the gate
+  can only fail for the thing it checks.
+
 - **A clean clone could not execute the binary it ships.** `tsc` writes `dist/cli.js` as 0644 and
   nothing set the bit back, so on a fresh `npm ci && npm run build` every README command check died
   with `EACCES`. This machine never saw it: the local build had been chmod'ed by hand once and
