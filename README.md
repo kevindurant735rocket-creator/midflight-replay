@@ -14,6 +14,7 @@
 <p align="center">
   <a href="#see-it-move">16s replay</a> ·
   <a href="#install">install</a> ·
+  <a href="#which-agents">which agents</a> ·
   <a href="#the-two-outputs">outputs</a> ·
   <a href="#put-it-on-the-pull-request">action</a> ·
   <a href="#honest-coverage">coverage</a> ·
@@ -182,6 +183,62 @@ midflight doctor <session.jsonl>
 
 There is no `npm install` step for the tool itself — it ships zero runtime
 dependencies. (The repo's devDependencies exist only to compile and test the source.)
+
+---
+
+## Which agents?
+
+`midflight agents` walks the stores on the machine you run it on and prints what it
+found. It is the honest answer to "can this read my agent?", measured every run:
+
+```
+$ midflight agents --probe
+agent                 status       sessions   size        newest
+--------------------  -----------  ---------  ----------  -----------------
+Codex CLI             readable     833        628.0 MB    2026-09-28
+Claude Code           readable     173        226.9 MB    2026-09-27
+Cursor                no adapter   1          8.6 KB      2026-08-31
+Gemini CLI            not installed
+...
+2 of 3 installed agents readable; 8 not installed on this machine.
+  ✓ Codex CLI: newest log: 2269 steps, 0 parse errors
+  ✓ Claude Code: newest log: 140 steps, 0 parse errors
+  ! Cursor: no adapter — Cursor keeps chat state in a private store, not a JSONL transcript (1 file(s) found)
+```
+
+`--probe` goes further: it parses the newest log of every readable agent, so
+"readable" means *this file parsed just now*, not "should work". An agent whose store
+exists but that midflight cannot read is printed with its real file count — the gap is
+visible instead of silent. The registry covers 11 hosts; the two with full adapters are
+Codex and Claude Code, and every other row says in one line why it is not supported yet.
+
+### Install it into your agent
+
+```bash
+midflight install codex        # one file, at ~/.codex/skills/midflight-replay/SKILL.md
+midflight install --all        # every known host
+midflight install --dry-run    # print the paths, write nothing
+```
+
+It writes a single `SKILL.md` and nothing else — no hook, no daemon, no config edit, no
+network call. That is deliberate: midflight reads the log the agent already writes, so
+there is nothing to intercept, and a wrapper around your agent is one more thing that can
+break a long-running session. The skill is plain Markdown you can read before installing
+it, it refuses to overwrite a different file without `--force`, and the commands inside it
+are asserted by a test to exist in the same build.
+
+| host | path | file |
+|---|---|---|
+| Codex CLI | `~/.codex/skills/midflight-replay/` | `SKILL.md` |
+| Claude Code | `~/.claude/skills/midflight-replay/` | `SKILL.md` |
+| opencode | `~/.config/opencode/skill/midflight-replay/` | `SKILL.md` |
+| Gemini CLI | `~/.gemini/skills/midflight-replay/` | `SKILL.md` |
+| Cursor | `~/.cursor/rules/midflight-replay/` | `*.mdc` |
+| Windsurf | `~/.codeium/windsurf/rules/midflight-replay/` | `*.md` |
+| GitHub Copilot | `~/.github/prompts/midflight-replay/` | `*.prompt.md` |
+
+The frontmatter differs per host on purpose (`name`+`description`, `description` only, or
+none) and a test locks that mapping, so the file is not a renamed copy of a README.
 
 ---
 

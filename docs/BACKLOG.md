@@ -43,7 +43,7 @@ people instead of the median 300.
 
 | # | Row | Trigger to promote it |
 |---|---|---|
-| P2-1 | Third host adapter (opencode / grok / antigravity) | `cc-sessions-viewer` already covers 7 hosts, so adapter count is **not** a differentiator. Promote only if a user files an issue naming a host we cannot open at all. | COMPETITIVE §3.2 |
+| P2-1 | Third host adapter (opencode / grok / antigravity) — **the gap board now ships**: `midflight agents` measures all 11 candidate stores on the user's own machine and names the unsupported ones with counts; `midflight install` writes the skill into 7 hosts. Adapter count itself still not a differentiator. | `cc-sessions-viewer` already covers 7 hosts, so adapter count is **not** a differentiator. Promote only if a user files an issue naming a host we cannot open at all. | COMPETITIVE §3.2 |
 | P2-2 | Live tail / SSE | `codex-trace` (110★) has it. Promote only on demand; it turns a single-file artefact into a server, which contradicts the zero-network claim. | COMPETITIVE §1 |
 | P2-3 | Time-travel / fork | `OrcaReplay` (268★), `rewind` (13★), `clay-good/agent-replay` (14★) already occupy it. Necessary, never sufficient — do not put it in the README headline. | COMPETITIVE §3.3 |
 | P2-4 | Token attribution instead of character mass | Blocked on the hosts actually logging tokens per source. Today they do not; the report says so on every page. | KNOWN-GAPS §3 |

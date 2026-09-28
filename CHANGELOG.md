@@ -8,6 +8,32 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`midflight agents` — fleet-level detection, measured on the machine it runs on.**
+  `midflight doctor` answered "is THIS file parseable" and nothing answered "which agents
+  do I have, and which of those can you read?". `src/agents.ts` walks 11 known host stores
+  (`~/.codex/sessions`, `~/.claude/projects`, `~/.cursor`, `~/.gemini`, opencode,
+  Copilot CLI, Aider, Continue, Cline, Windsurf, Factory Droid) and reports per host:
+  status, real file count, real bytes, newest log date. `--probe` parses the newest log of
+  every readable host, so "readable" means this file parsed just now.
+  A host whose store exists but has no adapter is printed with its file count and the
+  reason, per the KNOWN-GAPS rule that a gap you can see beats a gap you cannot.
+  Measured on the machine that built it: `2 of 3 installed agents readable`, Cursor
+  reported as `no adapter (1 file found)`, newest Codex log 2269 steps / 0 parse errors.
+
+- **`midflight install <agent>|--all` — one file, into whichever agent you run.**
+  The "works inside my agent" claim had no installation surface at all: no skill, no
+  hook, no MCP server, no plugin. `src/install.ts` writes a single `SKILL.md` into the
+  host's own skills or rules directory, with frontmatter shaped per host
+  (`name`+`description` for Codex/Claude Code/opencode/Gemini, `description`-only for
+  Cursor, none for Copilot prompts) and a test locking that mapping. Deliberately not a
+  hook or a wrapper: midflight reads the log the agent already writes, so there is
+  nothing to intercept, and a wrapper around a long-running session is one more thing
+  that can break it. It writes nothing without being asked, is idempotent, refuses to
+  overwrite a different file without `--force`, and every command named inside the skill
+  is asserted to exist in the same build.
+
+### Added
+
 - **`npm run smoke:real` — the parser checked against every real session on the machine.**
   Aimed at the gap the fix below exposed: 135 fixture tests were green while three real
   sessions were silently mis-parsed. It walks `~/.claude/projects` and `~/.codex/sessions`,

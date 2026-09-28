@@ -7,7 +7,11 @@ import { buildReport } from './report.js';
 import { buildPaste, assertPasteSafe } from './paste.js';
 import { writeFileSync } from 'node:fs';
 import { readVersion } from './version.js';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { postmortem, renderPostmortem } from './postmortem.js';
+import { scanAgents, formatAgentTable } from './agents.js';
+import { installSkill, presentTargets, TARGETS, SKILL_NAME, type InstallTarget } from './install.js';
 
 const USAGE = `midflight — forensic replay for AI coding agents
 
@@ -20,9 +24,17 @@ Usage
   midflight revert  <report.html> --list        show which steps are reversible
                                                 prints a reverse-appliable patch; never
                                                 writes the working tree
+  midflight agents [--json] [--probe]          which agents are installed here and which are readable
+  midflight install <agent>|--all [--dry-run]  write the midflight skill into that agent
   midflight redact                            run the redactor over stdin
   midflight --version                          print the installed version
   midflight help
+
+Agents / install options
+  --probe         parse the newest log of every readable agent (slower, proves it works)
+  --all           every known agent host, not just the ones present on this machine
+  --dry-run       print the target paths and write nothing
+  --force         replace a different file that is already at the target path
 
 Replay options
   --out <file>        write the HTML here (default: stdout)
@@ -34,6 +46,96 @@ Replay options
 
 Everything runs locally. No network, no telemetry, no database, no dependencies.
 `;
+
+async function cmdAgents(json: boolean, probe: boolean, all: boolean): Promise<number> {
+  const home = process.env.HOME ?? '';
+  const reports = await scanAgents({
+    homeDir: home,
+    probe,
+    ...(probe
+      ? {
+          parse: async (p: string) => {
+            const s = await parseSession(p, { homeDir: home });
+            return {
+              steps: s.steps.length,
+              parseErrors: s.parseErrors.length,
+              agent: s.meta.agent ?? '',
+            };
+          },
+        }
+      : {}),
+  });
+  const shown = all ? reports : reports;
+  if (json) {
+    console.log(JSON.stringify({ home, agents: shown }, null, 2));
+  } else {
+    console.log(formatAgentTable(shown));
+  }
+  return 0;
+}
+
+async function cmdInstall(args: string[]): Promise<number> {
+  const dry = args.includes('--dry-run');
+  const force = args.includes('--force');
+  const all = args.includes('--all');
+  const home = process.env.HOME ?? '';
+  const wanted = args.filter((a) => !a.startsWith('--'));
+  const version = readVersion();
+  let targets: InstallTarget[];
+  if (all) {
+    targets = TARGETS;
+  } else if (wanted.length === 0) {
+    const present = presentTargets(home);
+    if (present.length === 0) {
+      console.error(
+        'error: no known agent home found here. Pass a target explicitly, e.g.\n' +
+          `  midflight install codex\n\nknown targets: ${TARGETS.map((t) => t.id).join(', ')}`,
+      );
+      return 2;
+    }
+    targets = present;
+  } else {
+    targets = [];
+    for (const id of wanted) {
+      const t = TARGETS.find((x) => x.id === id);
+      if (!t) {
+        console.error(
+          `error: unknown target ${id}\nknown targets: ${TARGETS.map((x) => x.id).join(', ')}`,
+        );
+        return 2;
+      }
+      targets.push(t);
+    }
+  }
+  let wrote = 0;
+  let conflicts = 0;
+  for (const t of targets) {
+    if (dry) {
+      // dry-run must not touch the filesystem: report the exact path, write nothing
+      const p = `${join(home, t.dir, SKILL_NAME)}/${t.filename}`;
+      const already = existsSync(p);
+      console.log(
+        `${'DRY-RUN'.padEnd(9)} ${t.label.padEnd(16)} ${p}${already ? '  (exists; would be compared)' : ''}`,
+      );
+      continue;
+    }
+    const r = installSkill(t, { homeDir: home, version, force });
+    const state = r.conflict ? 'CONFLICT' : r.written ? 'WROTE' : 'UNCHANGED';
+    if (r.conflict) conflicts++;
+    if (r.written) wrote++;
+    console.log(`${state.padEnd(9)} ${t.label.padEnd(16)} ${r.path}`);
+    if (r.conflict) console.log(`          ${r.conflict}`);
+  }
+  console.log(
+    `\n${targets.length} target(s), ${wrote} written, ${conflicts} conflict(s), ` +
+      `${readVersion()} — skill name \`${SKILL_NAME}\`. Nothing else on this machine was touched.`,
+  );
+  if (dry) {
+    console.log('(dry run: nothing was written)');
+    return 0;
+  }
+  return conflicts > 0 ? 1 : 0;
+}
 
 async function cmdDoctor(path: string, json: boolean): Promise<number> {
   if (!exists(path)) {
@@ -321,6 +423,10 @@ async function main(): Promise<number> {
       }
       case 'stats':
         return await cmdStats(rest[0] ?? '', json);
+      case 'agents':
+        return await cmdAgents(json, argv.includes('--probe'), argv.includes('--all'));
+      case 'install':
+        return await cmdInstall(argv.slice(1));
       case 'postmortem':
         return await cmdPostmortem(rest[0] ?? '', json);
       case 'revert':
