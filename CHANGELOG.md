@@ -6,6 +6,19 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`scripts/verify-tarball.sh` no longer trusts a hand-kept command list.**
+  The gate packed the tarball, installed it into a clean prefix and ran a list of
+  subcommands that was written out by hand. Measured 2026-09-28: that list had never
+  included `postmortem`, and it stopped including `agents` and `install` the moment
+  those were added — so a package could have shipped with three of its seven commands
+  broken and the gate would still print `TARBALL-OK`. The list is now derived from the
+  shipped dispatch table in `dist/cli.js`, every derived command is executed, and
+  `install codex` is additionally asserted to have written a real `SKILL.md` into a
+  throwaway `$HOME`. Deriving it found the `postmortem` hole on the first run, which is
+  the argument for deriving it.
+
 ### Added
 
 - **`midflight agents` — fleet-level detection, measured on the machine it runs on.**

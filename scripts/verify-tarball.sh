@@ -52,4 +52,37 @@ RC=$?
 "$BIN" revert fixtures/claude-mini.jsonl --list >/dev/null 2>&1
 [ $? = 2 ] || fail "revert accepted a file that is not a report (should exit 2)"
 
+# The command list is derived from the shipped dispatch table, never hand-kept.
+# It was hand-kept until 2026-09-28, and the moment two commands were added
+# (agents, install) the gate kept saying TARBALL-OK without ever running them —
+# a package could have shipped with both broken and the gate would not have
+# noticed. A gate that only checks what someone remembered to list is decoration.
+CMDS=$(node -e '
+  const src = require("fs").readFileSync("dist/cli.js", "utf8");
+  const found = [...src.matchAll(/case '"'"'([a-z-]+)'"'"':/g)].map((m) => m[1]);
+  if (found.length < 5) { console.error("could not parse the dispatch table"); process.exit(1); }
+  console.log([...new Set(found)].join(" "));
+') || fail "could not derive the subcommand list from dist/cli.js"
+echo "  dispatch table lists: $CMDS"
+
+for c in $CMDS; do
+  case "$c" in
+    revert|redact) continue ;;   # both covered explicitly above / need stdin
+  esac
+  case "$c" in
+    doctor|postmortem) "$BIN" "$c" fixtures/claude-mini.jsonl >/dev/null 2>&1 || fail "$c exited non-zero" ;;
+    stats)   "$BIN" "$c" fixtures/codex-mini.jsonl  >/dev/null 2>&1 || fail "$c exited non-zero" ;;
+    replay)  continue ;;          # covered above
+    install) "$BIN" "$c" --dry-run >/dev/null 2>&1 || fail "$c --dry-run exited non-zero" ;;
+    *)       HOME="$T/fakehome" "$BIN" "$c" >/dev/null 2>&1 || fail "$c exited non-zero" ;;
+  esac
+done
+mkdir -p "$T/fakehome"
+# agents and install are the two this gate missed; run them explicitly too, and
+# assert install actually wrote a file into a throwaway HOME.
+"$BIN" agents --json >/dev/null 2>&1 || fail "agents --json exited non-zero"
+HOME="$T/fakehome" "$BIN" install codex >/dev/null 2>&1 || fail "install codex exited non-zero"
+[ -s "$T/fakehome/.codex/skills/midflight-replay/SKILL.md" ] || fail "install codex wrote no SKILL.md"
+echo "  agents --json ok; install codex wrote a skill into a throwaway HOME"
+
 echo "  TARBALL-OK: every subcommand runs from the installed package"
