@@ -20,11 +20,12 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run typecheck && npm test && npm run check:links && npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run check:links && npm run build && npm run check:readme",
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "doctor": "node dist/cli.js doctor fixtures/codex-mini.jsonl --json",
     "check:links": "node scripts/link-check.mjs README.md README.zh-CN.md CONTRIBUTING.md CHANGELOG.md docs/*.md docs/ISSUES/*.md",
+    "check:readme": "node scripts/readme-commands.mjs",
     "verify:tarball": "bash scripts/verify-tarball.sh",
     "smoke:real": "node scripts/real-log-smoke.mjs",
     "smoke:real:ci": "node scripts/real-log-smoke.mjs --limit 40"

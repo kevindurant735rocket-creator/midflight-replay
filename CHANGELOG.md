@@ -6,6 +6,19 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`npm run check:readme` — every command printed in README.md is executed before publish.**
+  The pitch is a copy-paste, so a command in the README that does not run is the
+  cheapest way to lose the visitor who has not starred the repo yet. The gate pulls
+  each `midflight` / `npx midflight-replay` line out of the README, runs it against
+  the built binary, expands the documented `ls -t ... | head -1` and `*/*.jsonl` globs
+  against real session logs, and adds `--dry-run` to any `install` line so it never
+  touches the operator's own agent config. It is wired into `prepublishOnly`, so the
+  package cannot be published with a README command that is stale. Measured:
+  `README-CMDS-OK n=12`; negative-tested by breaking one command, which drops it to
+  `README-CMDS-FAIL 11/12` and exit 1.
+
 ### Fixed
 
 - **`scripts/verify-tarball.sh` no longer trusts a hand-kept command list.**

@@ -44,7 +44,20 @@ that is a bug in the tool, not in your logs.
 npm install
 npm run build
 npm test                              # unit tests, ~seconds
+npm run check:readme                  # every midflight command in README.md exits 0
 node scripts/browser-check.mjs a.html b.html   # browser assertions, needs Chromium
+```
+
+`check:readme` exists because the first sixty seconds of this project is a
+copy-paste. It executes every `midflight` / `npx midflight-replay` line in
+README.md against the built binary, expands the documented globs against real
+session logs, and appends `--dry-run` to any `install` line so the check never
+writes into your own agent config. If you edit a command in the README, run it.
+To confirm the gate can actually fail:
+
+```bash
+sed 's|midflight doctor <session.jsonl>|midflight doctor /nope.jsonl|' README.md > /tmp/BROKEN.md
+npm run check:readme -- --readme /tmp/BROKEN.md   # README-CMDS-FAIL 11/12
 ```
 
 Node 20+. The repo is not a git-tracked sandbox in every environment, so if
