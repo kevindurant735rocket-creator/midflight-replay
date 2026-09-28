@@ -18,7 +18,7 @@
   "不自造 star/下载量数字",
   "不改测试来迎合实现"
  ],
- "rounds_plan": 4,
+ "rounds_plan": 5,
  "depts": [
   "PMO",
   "ARCH",
@@ -27,9 +27,9 @@
   "QA",
   "SRE"
  ],
- "goal_id": "active",
+ "goal_id": null,
  "created": "2026-09-28 19:12:44",
- "updated": "2026-09-28 21:21:56",
+ "updated": "2026-09-28 21:26:36",
  "rounds": [
   {
    "n": 2,
@@ -110,6 +110,33 @@
    "evidence": "npx vitest run rc=0 (218 passed/15 files) | bash scripts/acceptance.sh rc=0 ALL-AC-OK | node scripts/browser-check.mjs docs/demo-codex.html docs/demo-claude.html rc=0 (70 passed/0 failed) | bash scripts/demo-samples.sh rc=0 DEMO-SAMPLES-OK 3 files | npm run check:links rc=0 (53) | node scripts/verify-claims.mjs rc=0 | 三闸门 FAST-GATE-OK/DEAI-OK/BLOAT-OK rc=0 | 负例: 还原 editPath 后 test/postmortem.test.ts rc=1 (2 failed) | 真实会话 CLI: node dist/cli.js postmortem <claude 1.3MB log> rc=0 输出 2 条 repeated-edit | git push rc=0 CI-CHECKS-OK 609fa1c..a0158f5",
    "verdict": "CONTINUE",
    "closed": "2026-09-28 21:21:56",
+   "zero_delta_streak": 0
+  },
+  {
+   "n": 5,
+   "giga_run": "midflight-r5",
+   "depts": [
+    "PMO",
+    "ARCH",
+    "UX",
+    "DEV",
+    "QA",
+    "SRE"
+   ],
+   "agent_map": {
+    "PMO": "A-PMO",
+    "ARCH": "A-ARCH",
+    "UX": "A-UX",
+    "DEV": "A-DEV",
+    "QA": "A-QA",
+    "SRE": "A-SRE"
+   },
+   "state": "CLOSED",
+   "opened": "2026-09-28 21:26:27",
+   "delta": "屏幕人话化收口两处：① 真实会话时间线第 1 行的未翻译宿主内部记录 file-history-snapshot: messageId, snapshot, isSnapshotUpdate 改为报告自己的话（文件快照 · Claude Code 改文件前自己记的一笔，可忽略），原文本仍在该步详情面板、步数照计不丢；committed claude 样例补一条真实同型记录，真实浏览器闸门同时断言『没有行露出原始英文标识』与『命名的这一步详情里仍有原始行』。② README 首屏三个样例尺寸原为手打数字，样例每次重建就悄悄过期；verify-claims 改为以 README 为期望、文件为测量来校（checked 2→5），README 数字说错即红。",
+   "evidence": "npm run -s build rc=0 | npx vitest run rc=0 (218 passed/15 files) | node scripts/browser-check.mjs docs/demo-codex.html docs/demo-claude.html rc=0 (75 passed/0 failed, +5 断言) | bash scripts/acceptance.sh rc=0 ALL-AC-OK | bash scripts/demo-samples.sh rc=0 DEMO-SAMPLES-OK | node scripts/verify-claims.mjs rc=0 CLAIMS-OK checked=5 | 负例: README 尺寸改 99 KB -> rc=1 | 三闸门 FAST-GATE-OK/DEAI-OK/BLOAT-OK rc=0 | git push rc=0 CI-CHECKS-OK a0158f5..7422bfa",
+   "verdict": "CONTINUE",
+   "closed": "2026-09-28 21:26:36",
    "zero_delta_streak": 0
   }
  ],
