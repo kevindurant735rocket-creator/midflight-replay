@@ -151,32 +151,48 @@ jumping to a step.
 built this, it reports:
 
 ```
-2 of 3 installed agents readable; 8 not installed on this machine.
-  ! Cursor: no adapter — Cursor keeps chat state in a private store, not a JSONL transcript (1 file(s) found)
+2 of 7 installed agents readable; 4 not installed on this machine.
+  ✓ Codex CLI: newest log: 4090 steps, 0 parse errors
+  ✓ Claude Code: newest log: 140 steps, 0 parse errors
+  - Cursor: Cursor 装在这台机器上，但还没找到 CLI 的对话记录（它们在 ~/.cursor/projects/*/agent-transcripts）
+  - Windsurf: Windsurf 装在这台机器上，但 ~/.codeium/windsurf/cascade 下没有会话文件
 ```
 
 | host | store probed | on this machine | adapter |
 |---|---|---|---|
-| Codex CLI | `~/.codex/sessions`, `~/.codex/archived_sessions` | 833 rollouts, 628.0 MB | yes |
-| Claude Code | `~/.claude/projects` | 173 transcripts, 226.9 MB | yes |
-| Cursor | `~/.cursor` | 1 file, 8.6 KB | no — chat state is a private store, not a step-addressable JSONL |
-| Gemini CLI | `~/.gemini/tmp` | absent | no |
-| opencode | `~/.local/share/opencode/storage`, `~/.config/opencode` | absent | no |
-| GitHub Copilot CLI | `~/.config/github-copilot` | absent | no |
+| Codex CLI | `~/.codex/sessions`, `~/.codex/archived_sessions` | 849 rollouts, 678.5 MB | yes — `verified` |
+| Claude Code | `~/.claude/projects` | 173 transcripts, 226.9 MB | yes — `verified` |
+| Cursor | `~/.cursor/projects/*/agent-transcripts` | no session file yet | ships — `unverified` (0.1.2) |
+| Windsurf | `~/.codeium/windsurf/cascade/*.pb` | no session file yet | ships — `unverified`, and provably encrypted (0.1.2) |
+| Gemini CLI | `~/.gemini/tmp` | empty | no |
+| opencode | `~/.local/share/opencode/storage`, `~/.config/opencode` | empty | no |
+| GitHub Copilot CLI | `~/.config/github-copilot` | empty | no |
 | Aider | `~/.aider.chat.history.md` | absent | no |
 | Continue | `~/.continue` | absent | no |
 | Cline | `~/.cline` | absent | no |
-| Windsurf | `~/.codeium/windsurf` | absent | no |
 | Factory Droid | `~/.factory/sessions` | absent | no |
 
-Three of these are absent because the tool is not installed here, not because midflight
+Four of these are absent because the tool is not installed here, not because midflight
 cannot read them. That distinction is the whole point of the table: the counts come from
 `statSync` over the real store on every run, so the row is a measurement, not a claim.
 The counts drift upward every time the agent writes a session — the numbers above are a
 snapshot from 2026-09-28, not invariants. Re-measure with `midflight agents --probe`,
 which additionally parses the newest log of every readable host.
 
-**What is not done.** No third adapter ships. `docs/ISSUES/03-third-host-adapter.md` is
-the intake for one, and the promotion rule in `docs/BACKLOG.md` (a user who cannot open
-their own log) is unchanged by this row.
+**`unverified` is a state, not a shrug.** 0.1.2 added Cursor and Windsurf adapters and
+gave both `unverified`, which means: the parser exists and is tested, but it has never run
+against a real log of that host, so it is *not* counted as readable. The promotion rule is
+mechanical, not a judgement call — the first time one real Cursor `agent-transcripts` file
+or one real Windsurf cascade file is parsed on a user's machine, the CI gate
+`npm run smoke:real` (`test/smoke-real.test.ts`) has to be extended to cover that host, and
+only then does the row read `verified`.
 
+**Windsurf will not become verified by effort.** Its cascade store is encrypted at rest
+(measured 7.95 bits/byte on real-shaped bytes; see `docs/FORMATS.md` §4 for sources). The
+adapter's job is to *prove* that on your own bytes and refuse politely, which is why the
+row can never read "readable". If a future Windsurf version ships a plaintext export,
+that is the day the row changes.
+
+**What is not done.** The other seven hosts still have no adapter at all.
+`docs/ISSUES/03-third-host-adapter.md` is the intake for one, and the promotion rule in
+`docs/BACKLOG.md` (a user who cannot open their own log) is unchanged by this row.

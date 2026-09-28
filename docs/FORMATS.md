@@ -54,7 +54,29 @@
 - **`file-history-snapshot`**：Claude Code 自带的文件历史快照 → P1 time-travel 的现成数据源（Codex 侧没有等价物）
 - **`cost-state`**：自带成本状态 → 成本展示的现成数据源
 
-## 3. 适配器必须满足的通用契约（两种格式归一到这里）
+## 3. Cursor agent-transcripts JSONL（0.1.2 加入，`verified: false`）
+
+- 位置：`~/.cursor/projects/<encoded-path>/agent-transcripts/*.jsonl`
+- 来源：**公开的第三方实测记录**，不是本机样本 ——
+  `gh api repos/vshulcz/deja-vu/contents/internal/sources/cursor.go`
+  及 `fixtures/registry/cursor/.../agent-transcripts/registry-cursor.jsonl`。
+  截至 2026-09-28 本机 `~/.cursor/projects` 下没有真实会话文件，**所以这条契约是"照着公开记录实现的"，状态是 `unverified`**。
+- 结构：JSON Lines，行本身是对象，**Anthropic 形状**——用 `role` 而不是 Codex 的 `type`，正文在 `message.content` 块数组里，会话以 `{"type":"turn_ended"}` 结束。
+- 适配器实现：`src/adapters/cursor.ts` 复用 `parseAnthropicShaped`（`src/adapters/claude.ts`），两条路径共用一份记录遍历。
+- **不读 `~/.cursor/chats/*/store.db`**：那是 IDE 侧的 protobuf 存储，没有公开 schema。猜字段号只能读出半截会话，
+  比"读不了"更糟——它在 `midflight agents` 里被显式排除（`only: /agent-transcripts/`）。
+
+## 4. Windsurf cascade（0.1.2 加入，`verified: false`，且**故意读不出时间线**）
+
+- 位置：`~/.codeium/windsurf/cascade/<uuid>.pb`
+- 事实：**落盘即加密**。第三方在真机上的记录（`gh api repos/hi0001234d/nexpath/contents/src/ext-vscode/src/extractors/windsurf.ts`，
+  2026-05-28）明确写着不要实现这个解析器；本包在 `fixtures/windsurf-cascade-mini.pb`（4096 B 随机密文）上实测
+  **Shannon 熵 7.95 bits/byte**，反例样本 `windsurf-cascade-plaintext.pb` 熵 4.01，可作回归门槛。
+- 适配器行为 `src/adapters/windsurf.ts`：**在你自己的字节上量熵**，判定为密文就出一条中文 note 说明"加密、读不出来"，
+  agent 状态给 `unverified`，**绝不画一条空时间线**冒充成功。
+- 唯一明文的地方是 `windsurf.acp.metadataCache` 里的 LLM 标题，那不是会话。
+
+## 5. 适配器必须满足的通用契约（两种格式归一到这里）
 ```ts
 type ReplayStep =
   | { kind:'user';        ts:number; text:string }
@@ -74,7 +96,7 @@ type ReplayStep =
 3. 解析必须是**流式**的（按行读，不整文件载入），否则 109 MiB 文件会打爆内存。
 4. 时间戳缺失/非法时用上一条合法时间戳兜底，并在 `warnings[]` 记一笔。
 
-## 4. 取证方式（可复跑）
+## 6. 取证方式（可复跑）
 ```bash
 # Codex 行类型分布
 python3 -c "import json,sys;from collections import Counter;c=Counter()

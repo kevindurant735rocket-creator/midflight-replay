@@ -33,7 +33,9 @@
     "verify:tarball": "bash scripts/verify-tarball.sh",
     "smoke:real": "node scripts/real-log-smoke.mjs",
     "smoke:real:ci": "node scripts/real-log-smoke.mjs --limit 40",
-    "smoke:browser:real": "node scripts/browser-real-hosts.mjs"
+    "smoke:browser:real": "node scripts/browser-real-hosts.mjs",
+    "check:repo": "node scripts/verify-repo-settings.mjs",
+    "acceptance": "bash scripts/acceptance.sh"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

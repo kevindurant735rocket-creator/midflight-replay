@@ -215,31 +215,54 @@ found. It is the honest answer to "can this read my agent?", measured every run:
 $ midflight agents --probe
 agent                 status       sessions   size        newest
 --------------------  -----------  ---------  ----------  -----------------
-Codex CLI             readable     846        665.9 MB    2026-09-28
+Codex CLI             readable     849        678.5 MB    2026-09-28
 Claude Code           readable     173        226.9 MB    2026-09-27
 Cursor                no records   0          0 B         -
-Windsurf              no records   0          0 B         -
 Gemini CLI            no records   0          0 B         -
-...
+opencode              no records   0          0 B         -
+GitHub Copilot CLI    no records   0          0 B         -
+Aider                 not instal…  -          -           -
+Continue              not instal…  -          -           -
+Cline                 not instal…  -          -           -
+Windsurf              no records   0          0 B         -
+Factory Droid         not instal…  -          -           -
+
 2 of 7 installed agents readable; 4 not installed on this machine.
-  ✓ Codex CLI: newest log: 3568 steps, 0 parse errors
+  ✓ Codex CLI: newest log: 4090 steps, 0 parse errors
   ✓ Claude Code: newest log: 140 steps, 0 parse errors
-  - Cursor: Cursor is on this machine, but no chat record yet (Cursor keeps chats in ~/.cursor/chats)
-  - Windsurf: Windsurf is on this machine, but no chat record yet (Windsurf conversations live on its account side)
+  - Cursor: Cursor 装在这台机器上，但还没找到 CLI 的对话记录（它们在 ~/.cursor/projects/*/agent-transcripts）
+  - Windsurf: Windsurf 装在这台机器上，但 ~/.codeium/windsurf/cascade 下没有会话文件
 ```
 
 `--probe` goes further: it parses the newest log of every readable agent, so
 "readable" means *this file parsed just now*, not "should work".
 
-The three states are kept apart on purpose. **readable** means a session file was found
-and parsed. **no adapter** means session files were found and this tool cannot read them
-yet, with the real file count attached. **no records** means the host is installed but
-left nothing to read &mdash; a different situation entirely, and one an earlier version
-got wrong: it counted the rule files that `midflight install` writes into
-`~/.cursor/rules` and `~/.codeium/windsurf/rules` as sessions, so a machine where Cursor
-had never stored a single chat reported "1 file(s) found". The registry covers 11 hosts;
-the two with full adapters are Codex and Claude Code, and every other row says in one line
+The four states are kept apart on purpose. **readable** means a session file was found
+and parsed. **unverified** means an adapter ships but has never been run against a real
+log of that host — it is listed, and it does not count as readable. **no adapter** means
+session files were found and this tool cannot read them yet, with the real file count
+attached. **no records** means the host is installed but left nothing to read &mdash; a
+different situation entirely, and one an earlier version got wrong: it counted the rule
+files that `midflight install` writes into `~/.cursor/rules` and `~/.codeium/windsurf/rules`
+as sessions, so a machine where Cursor had never stored a single chat reported
+"1 file(s) found". The registry covers 11 hosts; Codex and Claude Code are the two with
+adapters that have parsed a real log, Cursor and Windsurf ship adapters that are still
+`unverified` until one of their real files shows up, and every other row says in one line
 why it is not supported yet.
+
+### The two adapters that are honest about not working yet
+
+Both were added in 0.1.2, and both refuse to pretend:
+
+- **Cursor.** The CLI writes plain Anthropic-shaped JSONL to
+  `~/.cursor/projects/<encoded-path>/agent-transcripts/*.jsonl`, and that is what the
+  adapter reads. The IDE's own `~/.cursor/chats/*/store.db` is a protobuf store with no
+  published schema, so it is deliberately *not* read: half a session with a guessed field
+  number is worse than no session.
+- **Windsurf.** The cascade store is `~/.codeium/windsurf/cascade/<uuid>.pb` and it is
+  encrypted at rest — real files measure 8.00 bits/byte of Shannon entropy. The adapter
+  measures the entropy of *your* bytes and reports the session as unreplayable, instead of
+  drawing an empty timeline that looks like a bug.
 
 ### Install it into your agent
 

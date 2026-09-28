@@ -6,6 +6,36 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-09-28
+
+### Added
+
+- **Two more hosts, and a new honesty state for them.** `cursor` and `windsurf`
+  adapters ship, both marked `unverified`: the parser exists and is tested, but it has
+  never run against a real log of that host, so it is not counted as readable in
+  `midflight agents`. Promotion to `verified` is mechanical — a real log has to pass the
+  `smoke:real` CI gate first.
+  - Cursor: reads the CLI's plain Anthropic-shaped `agent-transcripts` JSONL. The IDE's
+    `store.db` is a protobuf store with no published schema and is deliberately not read.
+  - Windsurf: the cascade store is encrypted at rest. The adapter measures Shannon entropy
+    on *your* bytes and says the session cannot be replayed, instead of drawing an empty
+    timeline that looks like a bug.
+- `npm run smoke:browser:real` — a real-browser gate over the two newest **real** Codex and
+  Claude Code sessions, 62 interaction assertions against the report the tool actually ships.
+
+### Fixed
+
+- **A 2.2 MB report used to open completely blank.** Tool output containing `<!--` or
+  `<script` pushed the HTML tokenizer into script-data-escaped state, so the document's own
+  closing tag never closed the script and the whole app became one unparseable blob — zero
+  page errors, zero DOM, no way to tell it apart from a slow load. Every `<` is now escaped
+  as `\u003c` in the data handed to the page, which JSON and JS both decode back losslessly.
+- `midflight agents` counted the same file twice when a host's roots overlapped
+  (`.cursor` plus `.cursor/projects`), inflating session counts and bytes.
+- `parseSession`'s unknown-format fallback always picked the first adapter, because every
+  adapter emits an `unknown` step. It now picks the one that classifies the most steps.
+
+
 ## [0.1.1] - 2026-09-28
 
 ### Fixed
