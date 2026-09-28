@@ -13,8 +13,8 @@ const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
  * A link that resolves on the author's machine and 404s for the reader is worse than a
  * broken link, because nothing reports it. The README spent a release claiming this repo
  * ran an action on its own pull requests, pointing at a workflow file that `.git/info/exclude`
- * kept out of every published tree. Both of these tests exist so that claim cannot come back:
- * one proves the real docs pass, one proves the rule can still fail.
+ * used to keep out of every published tree. Both of these tests exist so that claim cannot come
+ * back: one proves the real docs pass, one proves the rule can still fail.
  */
 const run = (files: string[]) =>
   spawnSync(process.execPath, ['scripts/link-check.mjs', ...files], { encoding: 'utf8' });
@@ -32,15 +32,20 @@ describe('every link a reader can click resolves — in a clone, not just on thi
   it('rejects a file that exists here but git does not ship', () => {
     // The probe has to sit inside the checkout: the point is a path that resolves on this
     // disk and is still absent from every commit. A temp dir one level up cannot express it.
+    // Both files are untracked for the length of the run, which is the whole point: the link
+    // resolves on this disk and 404s in every clone. It does not borrow a real path, so the
+    // test keeps meaning the same thing when a real path becomes committed.
+    const target = join(repoRoot, 'docs', '_link-probe-target.md');
     const f = join(repoRoot, 'docs', '_link-probe.md');
-    // .github/workflows/ is in .git/info/exclude: on disk, tracked by nothing.
-    writeFileSync(f, '# probe\n\n[x](../.github/workflows/ci.yml)\n', 'utf8');
+    writeFileSync(target, '# nobody ships this\n', 'utf8');
+    writeFileSync(f, '# probe\n\n[x](./_link-probe-target.md)\n', 'utf8');
     try {
       const r = run([f]);
       expect(r.status).toBe(1);
       expect(`${r.stdout}${r.stderr}`).toMatch(/git does not ship it/);
     } finally {
       rmSync(f, { force: true });
+      rmSync(target, { force: true });
     }
   });
 

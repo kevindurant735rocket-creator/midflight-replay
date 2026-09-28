@@ -6,6 +6,23 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **CI on the repository's own pushes and pull requests.** `.github/workflows/ci.yml` runs
+  `scripts/ci-checks.sh` on Node 20 and 22, plus a second runner with a real browser for the
+  report checks; `.github/workflows/self-replay.yml` points the tool at this repository's own
+  pull requests. Both files were written and validated earlier today, then parked in
+  `.git/info/exclude`, because the token this machine pushes with has scopes
+  `gist, read:org, repo` and GitHub refuses workflow-file writes without `workflow`.
+  The scope cannot be granted: on `github.com/login/device/confirmation` the Authorize
+  button never enables for this account (measured 2026-09-28, five reads 20 s apart, and
+  the account has no two-factor authentication), and pushing the files anyway is refused
+  with `refusing to allow an OAuth App to create or update workflow .github/workflows/ci.yml
+  without workflow scope`. So both files were uploaded through GitHub's own web upload
+  instead — byte-identical, checked by comparing the committed blob against the local file
+  after the fact. The README badge now tracks a run that actually happens instead of one
+  that was removed.
+
 ### Fixed
 
 - **Step #1 of a real session was an unexplained English identifier.** Claude Code writes a

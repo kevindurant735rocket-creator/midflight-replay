@@ -7,6 +7,7 @@
 <p align="center">
   <a href="#install"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
+  <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
 </p>
 
 <p align="center">
@@ -406,13 +407,10 @@ machine's real 109 MiB (114,325,714 bytes) / 30,736-line / 14,906-step Codex ses
 500 ms** and produces a 9,381-byte digest.
 
 That snippet is the whole setup: copy it into your own `.github/workflows/` and it runs
-on your pull requests. This repository does **not** run it on its own, and did not claim
-to until now — the two workflow files here (`ci.yml`, `self-replay.yml`) are complete and
-validated but stay out of the published tree, because the token this machine pushes with
-lacks GitHub's `workflow` scope and GitHub refuses that push outright. Until it lands,
-`bash scripts/acceptance.sh` runs the same checks locally and `.githooks/pre-push` refuses a
-commit that breaks them. You can see the shape of the missing badge in
-`scripts/ci-checks.sh`.
+on your pull requests. This repository runs the same two files on its own pushes and pull
+requests, so the badge at the top is the state of the last real run and not a claim. The
+list itself lives in one place, `scripts/ci-checks.sh`: `.githooks/pre-push` runs that
+file, and CI runs that file, so a green local push and a green run mean the same thing.
 
 ## Honest coverage
 
@@ -687,10 +685,9 @@ later. That is the gap this fills, and it is why the output is a single HTML fil
 with no server and no install, rather than an app you have to learn.
 
 It is also worth saying what this project will not do to win stars: it does not
-badge itself `CI green` while its workflow files are parked off-tree for lack of
-a token scope, and it does not count a host as readable until a real log of that
-host has parsed. Both refusals cost it stars. Both are also the only reason the
-table above is worth reading.
+badge itself `CI green` unless the run behind the badge actually passed, and it does
+not count a host as readable until a real log of that host has parsed. Both refusals
+cost it stars. Both are also the only reason the table above is worth reading.
 
 So the test here is deliberately the cheapest one that cannot be faked: **install
 it and make something.**

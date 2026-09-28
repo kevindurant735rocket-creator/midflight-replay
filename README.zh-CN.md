@@ -308,11 +308,9 @@ jobs:
 
 "这段 yaml 就是全部配置：抄进你自己的 `.github/workflows/`，它就会在你的 PR 上跑。
 
-本仓库**不**跑它自己，以前也没声称跑过——这里两个 workflow 文件（`ci.yml`、
-`self-replay.yml`）已经写完并验证通过，但**没有进到发布出去的目录树里**：这台机器推送用的
-token 缺 GitHub 的 `workflow` scope，GitHub 会直接拒绝这次推送。在它们落地之前，
-`bash scripts/acceptance.sh` 在本地跑同一套检查，`.githooks/pre-push` 会挡住任何跑不过的提交。
-少掉的那枚徽章长什么样，可以看 `scripts/ci-checks.sh`。
+本仓库把同样这两个文件跑在自己的 push 和 PR 上，顶部那枚徽章就是上一次真实运行的状态，不是说法。
+检查清单只写一遍，在 `scripts/ci-checks.sh` 里：`.githooks/pre-push` 跑它，CI 也跑它，
+所以本地推上去是绿的、CI 是绿的，意思是同一件事。
 
 ---
 

@@ -93,18 +93,19 @@ What that costs, stated plainly:
   command with a different blast radius, and the ceiling above is what makes that
   decision easy: it should refuse more than this one does.
 
-## 6. There is no CI badge, because there is no CI running
+## 6. CI runs on pushes and pull requests, and stops there
 
-The two workflow files exist on disk (`.github/workflows/ci.yml`,
-`.github/workflows/self-replay.yml`) and are parked in `.git/info/exclude`, not in
-the tree. The token this machine holds has scopes `gist, read:org, repo`; GitHub
-refuses workflow-file writes without the `workflow` scope, so `gh api --method PUT
-.../contents/.github/workflows/ci.yml` returns HTTP 404. Measured, not assumed.
+`.github/workflows/ci.yml` and `.github/workflows/self-replay.yml` are in the tree and
+run on this repository's own pushes and pull requests. Both are real: `ci.yml` runs the
+same `scripts/ci-checks.sh` the pre-push hook runs, on Node 20 and 22, plus a second
+runner with a real browser; `self-replay.yml` points the tool at this repository's own
+pull requests.
 
-So the README carried two badges pointing at workflows the remote does not have
-(`gh api repos/.../actions/runs --jq .total_count` → `0`, and `gh workflow list` returns
-nothing at all, re-measured 2026-09-28 after a push). Every visitor saw a
-broken image in the first screen. They are removed rather than left as decoration.
+What is still missing is everything past a merge. There is no release workflow, so
+publishing to npm is still a person typing `npm publish` — deliberately, because a
+publish cannot be taken back for 72 hours and that is not a decision a bot should make
+on a Tuesday. There is no scheduled run either, so a staleness check happens when
+something is pushed, not on a timer.
 
 **The API path is blocked too, re-measured 2026-09-28:**
 `gh api --method PUT repos/…/contents/.github/workflows/self-replay.yml` returns
