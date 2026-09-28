@@ -81,7 +81,7 @@ export function buildPaste(session: Session, opts: PasteOptions = {}): PasteResu
         row(['步骤', String(steps.length)]),
         row(['解析错误行', String(session.parseErrors.length)]),
         row(
-          ['可逆放比例', `${esc(VERDICT_LABEL[cov.verdict])} · ${Math.round((cov.reversibleRatio ?? cov.ratio) * 100)}%（${cov.withBefore} / ${cov.totalChanges ?? cov.edits + cov.shellMutations} 处改动）— ${esc(cov.reason)}`],
+          ['可撤回比例', `${esc(VERDICT_LABEL[cov.verdict])} · ${Math.round((cov.reversibleRatio ?? cov.ratio) * 100)}%（${cov.withBefore} / ${cov.totalChanges ?? cov.edits + cov.shellMutations} 处改动）— ${esc(cov.reason)}`],
         ),
         row(
           ['上下文压缩', ctx.hasFirstHandCompaction
@@ -109,12 +109,12 @@ export function buildPaste(session: Session, opts: PasteOptions = {}): PasteResu
     .sort((a, b) => b[1].n - a[1].n)
     .slice(0, 25)
     .map(([name, e]) =>
-      row([`<code>${esc(name)}</code>`, String(e.n), e.edits ? `${e.edits}（可逆放 ${e.recon}）` : '—']),
+      row([`<code>${esc(name)}</code>`, String(e.n), e.edits ? `${e.edits}（可撤回 ${e.recon}）` : '—']),
     );
   sections.push({
     name: '工具调用普查',
     priority: 1,
-    html: `<details><summary>工具调用普查（${census.size} 种）</summary>${table(['工具', '次数', '编辑/可逆放'], censusRows)}</details>`,
+    html: `<details><summary>工具调用普查（${census.size} 种）</summary>${table(['工具', '次数', '编辑/可撤回'], censusRows)}</details>`,
   });
 
   /* --- section 3: turn table --- */

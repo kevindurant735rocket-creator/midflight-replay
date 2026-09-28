@@ -180,14 +180,14 @@ export function planRevert(
   readCurrent: (absPath: string) => string | undefined = defaultRead,
 ): RevertResult {
   if (!Number.isInteger(stepIndex) || stepIndex < 0 || stepIndex >= steps.length) {
-    return { ok: false, step: stepIndex, code: 'STEP_OUT_OF_RANGE', reason: `步骤 ${stepIndex} 不存在：这份报告共 ${steps.length} 步。用 --list 看可逆放的步骤。` };
+    return { ok: false, step: stepIndex, code: 'STEP_OUT_OF_RANGE', reason: `步骤 ${stepIndex} 不存在：这份报告共 ${steps.length} 步。用 --list 看哪些步骤能撤回。` };
   }
   const s = steps[stepIndex] as ReplayStep;
   if (s.kind !== 'tool_call') {
-    return { ok: false, step: stepIndex, code: 'NOT_A_FILE_EDIT', reason: `步骤 ${stepIndex} 是 ${s.kind}，不是文件编辑，没有可逆放的补丁。` };
+    return { ok: false, step: stepIndex, code: 'NOT_A_FILE_EDIT', reason: `步骤 ${stepIndex} 是 ${s.kind}，不是文件编辑，撤不回来。` };
   }
   if (!isEditTool(s.name)) {
-    return { ok: false, step: stepIndex, code: 'NOT_A_FILE_EDIT', reason: `步骤 ${stepIndex} 的工具是 ${s.name}，不写文件，没有可逆放的补丁。` };
+    return { ok: false, step: stepIndex, code: 'NOT_A_FILE_EDIT', reason: `步骤 ${stepIndex} 的工具是 ${s.name}，不写文件，撤不回来。` };
   }
   const path = filePathOfArgs(s.rawArgs);
   if (!path) {

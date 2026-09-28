@@ -10,6 +10,13 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
+<p align="center">
+  <sub><b>It cannot phone home.</b> No network, no telemetry, no database, zero runtime
+  dependencies. Your paths, tokens and emails are redacted <i>before</i> anything is
+  written &mdash; see <a href="#privacy">privacy</a>. The output is a file on your disk;
+  what you do with it after that is your call.</sub>
+</p>
+
 ## Run it on your own session &mdash; one command, nothing to clone
 
 ```bash
@@ -46,7 +53,10 @@ one that actually installs.</sub>
 </p>
 
 <p align="center">
-  <img src="docs/demo/demo.gif" alt="16-second scrub-through of a real 32 MB Claude Code session: the timeline cursor moves, the context sawtooth drops on a compaction, a before-image diff opens" width="820">
+<picture>
+    <source srcset="docs/demo/demo.gif" type="image/gif">
+    <img src="docs/demo/poster.png" alt="16-second scrub-through of a real 32 MB Claude Code session: the timeline cursor moves, the context sawtooth drops on a compaction, a before-image diff opens" width="820">
+  </picture>
 </p>
 
 <p align="center"><sub>The real thing, moving. 16 seconds of a 32 MB Claude Code session &mdash; 3,111 parsed steps, 10 first-hand compaction events. No mock data: the file was produced by <code>midflight replay</code> against a session log the agent wrote about its own work.</sub></p>

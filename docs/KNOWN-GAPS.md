@@ -39,7 +39,7 @@ backups=113  joined=55  agree=0  disagree=0  recovered=55
 
 That session had **zero** reversible edits before this feature. Now 55 of them render a
 real diff (1,332 `del` lines, 569 `add` lines), each badged
-`before-image 来自 file-history 备份 · 可逆放（非日志内联）`.
+`before-image 来自 file-history 备份 · 可撤回（非日志内联）`.
 
 **Two things are still not done, on purpose.** The per-file read ceiling is 4 MiB — a
 larger backup is counted and reported, never silently dropped. And a backup that vanished
@@ -57,7 +57,7 @@ node dist/cli.js doctor ~/.claude/projects/-Users-zhangfengrui/671a21ed-b847-461
 On session **X**, all 1,720 file changes arrive as `exec_command` argument strings. The
 report says so and refuses to draw a `del` line it cannot justify — see
 [diff.ts](../src/diff.ts), whose module comment states the rule. The coverage bar reads
-"部分可逆放" rather than inventing a reverse.
+"部分可撤回" rather than inventing a reverse.
 
 ## 3. Character mass, not token attribution
 

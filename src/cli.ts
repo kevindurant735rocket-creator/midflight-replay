@@ -369,13 +369,13 @@ async function cmdRevert(argv: string[]): Promise<number> {
     // --list must work on a report alone: a colleague may not have the checkout.
     const rows = listRevertable(steps);
     if (rows.length === 0) {
-      console.error('这份报告里没有可逆放的编辑：没有任何一步带 before-image。');
+      console.error('这份报告里能撤回的编辑：没有任何一步带 before-image。');
       return 1;
     }
     for (const r of rows) {
       console.log(`step ${String(r.step).padStart(5)}  [${r.source.padEnd(12)}]  ${r.path}`);
     }
-    console.error(`\n${rows.length} 个可逆放步骤。用 --step <n> 生成补丁。`);
+    console.error(`\n${rows.length} 个能撤回的步骤。用 --step <n> 生成补丁。`);
     return 0;
   }
 

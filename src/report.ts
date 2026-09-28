@@ -330,8 +330,8 @@ function detail(){
     if(d){
       h += '<div class="kv">'+(d.recon
         ? (d.src==="file-history"
-            ? '<span class="badge warn" title="日志本身没有 old_string；这一份 before-image 由宿主自己的备份（~/.claude/file-history）按内容比对还原，原始文件路径未记录。">before-image 来自 file-history 备份 · 可逆放（非日志内联）</span>'
-            : '<span class="badge ok">before-image 可用 · 可逆放</span>')
+            ? '<span class="badge warn" title="日志本身没有 old_string；这一份 before-image 由宿主自己的备份（~/.claude/file-history）按内容比对还原，原始文件路径未记录。">before-image 来自 file-history 备份 · 可撤回（非日志内联）</span>'
+            : '<span class="badge ok">before-image 可用 · 可撤回</span>')
         : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+
         (d.recon && d.src==="file-history" && s.beforeImageFrom ? ' <span class="badge">备份 '+esc(s.beforeImageFrom)+'</span>':'')+'</div>';
       h += '<div class="diff">'+d.lines.map(l=>'<div class="'+l[0]+'"><span class="ln">'+esc(String(l[2]??""))+'</span>'+(l[0]==="add"?"+":l[0]==="del"?"-":" ")+esc(l[1])+'</div>').join("")+'</div>';
@@ -400,8 +400,8 @@ function header(){
   const pct=Math.round((c.reversibleRatio??c.ratio)*100);
   // The prose above is a verdict; cov-nums prints the three counts it came from, so a
   // reader (or the README) never has to trust a claim they cannot check.
-  hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+
-    ' · 可逆放 <b>'+pct+'%</b>（'+kb(c.withBefore??0)+' / '+kb(denom)+' 处改动）<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
+  hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可撤回":c.verdict==="partial"?"部分可撤回":c.verdict==="diff-only"?"仅 diff":"无编辑")+
+    ' · 可撤回 <b>'+pct+'%</b>（'+kb(c.withBefore??0)+' / '+kb(denom)+' 处改动）<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
     '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'" data-before-log="'+c.withBeforeLog+'" data-before-backup="'+c.withBeforeBackup+'" data-backups="'+c.backups+'">'+
     '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b>'+
     (c.withBeforeBackup>0 ? '（日志内联 <b>'+c.withBeforeLog+'</b> + 备份还原 <b>'+c.withBeforeBackup+'</b>）' : '')+

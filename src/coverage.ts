@@ -122,8 +122,8 @@ export function computeCoverage(steps: ReplayStep[], agent: string, fh?: FileHis
 }
 
 export const VERDICT_LABEL: Record<Coverage['verdict'], string> = {
-  full: '可逆放',
-  partial: '部分可逆放',
+  full: '可撤回',
+  partial: '部分可撤回',
   'diff-only': '仅 diff',
   'no-edits': '无编辑',
 };

@@ -47,7 +47,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   conclusions. `computeCoverage` now also reports `totalChanges` (structured
   edits + shell-borne ones) and `reversibleRatio` (reversible / total), and the
   bar divides by every change instead of by the reversible ones. It reads
-  `可逆放 0%（0 / 1.7k 处改动）`, which agrees with the explanation underneath.
+  `可撤回 0%（0 / 1.7k 处改动）`, which agrees with the explanation underneath.
 
 - **A report that failed to parse no longer ships as a blank page.**
   While renaming a label, one `</div>` escaped its string literal in `report.ts`.
@@ -257,7 +257,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   rescue path is proven by stripping `old_string` from all 211 tool calls of session
   `671a21ed`: `backups=113 joined=55 agree=0 disagree=0 recovered=55` — 55 edits that
   were previously unrecoverable now render real diffs, badged
-  `before-image 来自 file-history 备份 · 可逆放（非日志内联）`.
+  `before-image 来自 file-history 备份 · 可撤回（非日志内联）`.
 
   Per-file read ceiling is 4 MiB. Oversize, missing, unreadable and host-untracked
   backups are each counted and reported, never silently dropped. `doctor --json` and the

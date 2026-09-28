@@ -215,7 +215,7 @@ function detail(){
     const d = diffFor(s);
     if(d){
       h += '<div class="kv">'+(d.recon
-        ? '<span class="badge ok">before-image 可用 · 可逆放</span>'
+        ? '<span class="badge ok">before-image 可用 · 可撤回</span>'
         : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+'</div>';
       h += '<div class="diff">'+d.lines.map(l=>'<div class="'+l[0]+'"><span class="ln">'+esc(String(l[2]??""))+'</span>'+(l[0]==="add"?"+":l[0]==="del"?"-":" ")+esc(l[1])+'</div>').join("")+'</div>';
     }
@@ -273,7 +273,7 @@ function header(){
     (D.ctx.unexplainedDrops? '<span class="badge warn">'+D.ctx.unexplainedDrops+" 次未解释的上下文下降</span>":'')+
     '</div>';
   const pct=Math.round(c.ratio*100);
-  hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+
+  hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可撤回":c.verdict==="partial"?"部分可撤回":c.verdict==="diff-only"?"仅 diff":"无编辑")+
     ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div></div>';
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+

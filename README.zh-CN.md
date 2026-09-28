@@ -323,8 +323,8 @@ Claude Code 的 `Edit` 带 `old_string` + `new_string`，`Write` 带完整 `cont
 
 | 判定 | 含义 |
 |---|---|
-| `full` 全可逆放 | 每个编辑步都有 before-image，会话可重建 |
-| `partial` 部分可逆放 | 部分编辑步有 before-image，覆盖条显示比例 |
+| `full` 全部可撤回 | 每个编辑步都有 before-image，会话可重建 |
+| `partial` 部分可撤回 | 部分编辑步有 before-image，覆盖条显示比例 |
 | `diff-only` 仅 diff | 日志记了"写过这个文件"，但没记之前的内容 |
 | `no-edits` 无编辑 | 这条会话根本没改文件 |
 
@@ -385,7 +385,7 @@ midflight doctor <session.jsonl> [--json]    解析并体检；输入有问题�
 midflight stats  <session.jsonl> [--json]    解析并打印步数统计
 midflight postmortem <session.jsonl> [--json] 数循环、反复改同一处、上下文压力
 midflight revert  <report.html> --step <n>    打印撤销第 n 步所需的补丁
-midflight revert  <report.html> --list       列出哪些步骤可逆放
+midflight revert  <report.html> --list       列出哪些步骤可以撤回
 midflight agents [--json] [--probe]         本机装了哪些智能体、哪些读得了
 midflight install <agent>|--all [--dry-run]  把 midflight skill 装进那个智能体
 midflight redact                            对 stdin 跑脱敏
