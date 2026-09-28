@@ -76,7 +76,29 @@ function sniffFirstObject(path: string, sampleBytes: number): any | null {
  * Sniff the format from the first intact record only. Both formats are JSON Lines, so the
  * discriminator is structural, never the file name.
  */
+/**
+ * Windsurf keeps one file per conversation at `<...>/cascade/<uuid>.pb`. That path
+ * IS the format marker, and it has to be checked before the content sniff: a cascade
+ * store whose bytes happen to be plain text sniffs as an ordinary JSON object, falls
+ * through to the unknown-shape fallback, and that fallback emits one `unknown` step
+ * per line. A 200-line plaintext store was being reported as a 200-step session --
+ * a session the user never had. The windsurf adapter says the opposite and says why
+ * ("读不出来，不是因为没做事"), which is the only honest reading of those bytes.
+ */
+function looksLikeCascadePath(path: string): boolean {
+  if (!/\.pb$/i.test(path)) return false;
+  // Either the real store layout (`<...>/cascade/<uuid>.pb`) or a file named after
+  // it, which is how this project's own fixtures are laid out.
+  return /(^|[/\\])cascade[/\\]/i.test(path) || /cascade/i.test(basenameOf(path));
+}
+
+function basenameOf(path: string): string {
+  const m = /([^/\\]+)$/.exec(path);
+  return m ? m[1] : path;
+}
+
 export async function detectAdapter(path: string, sampleBytes = 8 * 1024 * 1024): Promise<AdapterName | 'unknown'> {
+  if (looksLikeCascadePath(path)) return 'windsurf';
   const o = sniffFirstObject(path, sampleBytes);
   if (o && typeof o === 'object') {
     if ('payload' in o && 'type' in o && 'ordinal' in o) return 'codex';

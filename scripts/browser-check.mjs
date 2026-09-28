@@ -70,13 +70,22 @@ for (const f of files) {
   }
 
   // ---- keyboard scrub ----
+  // A one-step report cannot advance: the windsurf adapter emits exactly one note
+  // ("unreadable, and here is why"), so "ArrowRight advances" has no correct answer
+  // on it. Skip the forward assertions for N < 2 instead of pretending they passed --
+  // and still assert the clamping ones, which do hold at any length.
+  const canAdvance = N > 1;
   await page.evaluate(() => select(0));
-  await page.keyboard.press('ArrowRight');
-  ok('ArrowRight advances one step', (await cur()) === 1, `cur=${await cur()}`);
-  await page.keyboard.press('j');
-  ok('j advances one step', (await cur()) === 2, `cur=${await cur()}`);
-  await page.keyboard.press('k');
-  ok('k goes back one step', (await cur()) === 1, `cur=${await cur()}`);
+  if (canAdvance) {
+    await page.keyboard.press('ArrowRight');
+    ok('ArrowRight advances one step', (await cur()) === 1, `cur=${await cur()}`);
+    await page.keyboard.press('j');
+    ok('j advances one step', (await cur()) === 2, `cur=${await cur()}`);
+    await page.keyboard.press('k');
+    ok('k goes back one step', (await cur()) === 1, `cur=${await cur()}`);
+  } else {
+    ok('single-step report: forward keys correctly stay put', (await cur()) === 0, `N=${N} cur=${await cur()}`);
+  }
   await page.keyboard.press('ArrowLeft');
   ok('ArrowLeft goes back one step', (await cur()) === 0, `cur=${await cur()}`);
   await page.keyboard.press('End');
@@ -101,7 +110,13 @@ for (const f of files) {
   const during = await page.locator('#play').innerText();
   const advanced = (await cur()) > 0;
   await page.keyboard.press(' ');
-  ok('space starts playback', before !== during && advanced, `btn ${before}->${during} cur=${await cur()}`);
+  if (canAdvance) {
+    ok('space starts playback', before !== during && advanced, `btn ${before}->${during} cur=${await cur()}`);
+  } else {
+    // One step means nothing to play through. Verified further down, where the button's
+    // own label is checked for saying so.
+    ok('single-step report: playback does not run past the end', (await cur()) === 0, `cur=${await cur()}`);
+  }
 
   // ---- main axis click-to-jump ----
   const rects = page.locator('.axiswrap svg').first().locator('rect[data-i]');
@@ -126,12 +141,22 @@ for (const f of files) {
   ok('step list rows are clickable', rowClick >= 0 && (await cur()) === rowClick, `row=${rowClick} cur=${await cur()}`);
 
   // ---- AC-3b: context axis (secondary axis) jumps to first occurrence ----
+  // A host that records no token counts has no curve to draw. The report then says so
+  // in words; that is the correct output, so accept it instead of demanding bands.
+  const ctxNone = await page.locator('.ctxnone').count();
   const cats = page.locator('.axiswrap svg').nth(1).locator('path[data-cat]');
   const cc = await cats.count();
-  ok('context axis drew one band per category', cc > 0, `bands=${cc}`);
+  ok(ctxNone > 0
+       ? 'report states plainly that this log carries no context data'
+       : 'context axis drew one band per category',
+     ctxNone > 0 ? /测不了/.test(await page.locator('.ctxnone').innerText()) : cc > 0,
+     ctxNone > 0 ? 'ctxnone shown' : `bands=${cc}`);
 
   // Pick a band that actually has area; a category with no content renders as a flat
   // zero-height line and is legitimately unclickable.
+  if (ctxNone > 0) {
+    ok('single-step report: nothing to advance past the end', (await cur()) === 0, `cur=${await cur()}`);
+  } else {
   const liveCat = await page.evaluate(() => {
     for (let k = 0; k < D.cats.length; k++) if (D.ctx.firstStep[k] >= 0) return k;
     return -1;
@@ -148,6 +173,7 @@ for (const f of files) {
     await page.evaluate(() => select(0));
     await page.locator('.legend span').nth(liveCat).click();
     ok('legend swatch click jumps to the same step', (await cur()) === expect, `cur=${await cur()} expect=${expect}`);
+  }
   }
 
   // ---- diff rendering on an edit step ----
@@ -168,7 +194,7 @@ for (const f of files) {
   // ---- regression: context bands must STACK, not overlap from one baseline ----
   // getBBox() spans the whole path and early zero-mass steps collapse onto the baseline, so
   // measure the geometry at the final step instead: band k's bottom must equal band k-1's top.
-  const stack = await page.evaluate(() => {
+  const stack = ctxNone > 0 ? { n: 0 } : await page.evaluate(() => {
     const paths = [...document.querySelectorAll('.axiswrap svg')[1].querySelectorAll('path[data-cat]')]
       .sort((a, b) => +a.getAttribute('data-cat') - +b.getAttribute('data-cat'));
     let maxTot = 1;
@@ -189,8 +215,15 @@ for (const f of files) {
     }
     return { worst, bottomOk, bottomOfFirst: edges[0].bottom, edges };
   });
-  ok('context bands stack to the expected geometry', stack.worst < 0.05, JSON.stringify(stack));
-  ok('the lowest band sits on the baseline', Math.abs(stack.bottomOfFirst - 34) < 0.05, `bottom=${stack.bottomOfFirst}`);
+  if (ctxNone > 0) {
+    // No curve, so there is no stacking geometry to verify. Assert the honesty instead:
+    // the play button must admit there is nothing to play, not accept a click and stall.
+    const playLabel = await page.locator('#play').innerText();
+    ok('single-step report: play button says there is nothing to play', /只有 1 步/.test(playLabel), `label=${playLabel}`);
+  } else {
+    ok('context bands stack to the expected geometry', stack.worst < 0.05, JSON.stringify(stack));
+    ok('the lowest band sits on the baseline', Math.abs(stack.bottomOfFirst - 34) < 0.05, `bottom=${stack.bottomOfFirst}`);
+  }
 
   // ---- regression: the diff gutter must show line numbers, not blank space ----
   const gut = await page.evaluate(() => {

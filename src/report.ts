@@ -135,6 +135,7 @@ main{display:grid;grid-template-columns:1fr 1fr;gap:0;height:calc(100vh - 150px)
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
 .pane{overflow:auto;padding:0 0 40px}
 .pane.left{border-right:1px solid var(--line)}
+.ctxnone{padding:14px 16px;border-bottom:1px solid var(--line);background:#0b0f14;color:var(--dim);font-size:12.5px;line-height:1.8}.ctxnone b{color:var(--fg)}
 .axiswrap{padding:10px 14px;border-bottom:1px solid var(--line);background:#0b0f14}
 .axlabel{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;margin-bottom:4px}
 svg{display:block;width:100%;cursor:crosshair}
@@ -238,8 +239,19 @@ function drawAxes(){
   wrap.appendChild(l2);
   const s2 = document.createElementNS("http://www.w3.org/2000/svg","svg");
   s2.setAttribute("viewBox","0 0 1000 34"); s2.setAttribute("preserveAspectRatio","none"); s2.setAttribute("height","34");
-  let maxTot = 1;
-  for(let i=0;i<N;i++){ const c=cg.cumulative[i]; if(c){ let t=0; for(const v of c) t+=v; if(t>maxTot) maxTot=t; } }
+  let maxTot = 1, anyCtx = false;
+  for(let i=0;i<N;i++){ const c=cg.cumulative[i]; if(c){ let t=0; for(const v of c) t+=v; if(t>0) anyCtx=true; if(t>maxTot) maxTot=t; } }
+  // No context data anywhere: say so instead of drawing four flat bands along the
+  // bottom edge, which reads as "the context never grew" rather than "this log
+  // carries no token counts". Windsurf is the known case -- its on-disk store is
+  // encrypted, so there is nothing to measure.
+  if(!anyCtx){
+    const note=el("div","ctxnone");
+    note.innerHTML="<b>这份日志里没有上下文数据</b> · 宿主没有记录 token 用量，"+
+      "所以画不出占用曲线。<br>副轴不是空的，是<b>测不了</b>——上面那排色块才是真实步骤数。";
+    wrap.appendChild(note);
+    return wrap;
+  }
   const colors=["--c-conversation","--c-reasoning","--c-tool_output","--c-compaction"];
   // Stacked, not overlapping: each band sits on the sum of the bands below it, so the total
   // silhouette is the whole context and a band's thickness is its share. Drawing every band
@@ -359,8 +371,13 @@ function select(i){
 }
 function move(d){ if(cur<0) select(0); else select(cur+d); }
 function play(){
+  // A one-step report has nothing to play through. Without this the button accepts the
+  // click, the interval fires, immediately hits the end and resets -- so the label
+  // never changes and the button looks broken. Say what is true instead.
+  if(N<2){ const b=document.getElementById("play"); if(b){b.textContent="只有 1 步"; b.disabled=true; b.style.opacity=".55"; b.style.cursor="default";} return; }
   if(playing) return stop();
-  playing=true; timer=setInterval(()=>{ if(cur>=N-1){stop();return;} select(cur+1); }, 220);
+  playing=true; const pb=document.getElementById("play"); if(pb) pb.textContent="❚❚ 暂停";
+  timer=setInterval(()=>{ if(cur>=N-1){stop();return;} select(cur+1); }, 220);
   document.getElementById("play").textContent="⏸ 暂停";
 }
 function stop(){ playing=false; if(timer)clearInterval(timer); const b=document.getElementById("play"); if(b)b.textContent="▶ 播放"; }

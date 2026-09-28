@@ -29,7 +29,7 @@
  ],
  "goal_id": "active",
  "created": "2026-09-28 19:12:44",
- "updated": "2026-09-28 19:14:12",
+ "updated": "2026-09-28 19:17:47",
  "rounds": [
   {
    "n": 2,
@@ -50,8 +50,13 @@
     "QA": "A-QA",
     "SRE": "A-SRE"
    },
-   "state": "OPEN",
-   "opened": "2026-09-28 19:14:12"
+   "state": "CLOSED",
+   "opened": "2026-09-28 19:14:12",
+   "delta": "help 全英→中文人话并前置'先试这一条'; agents 表 'not instal…' 截断修复; doctor byKind 裸 JSON→列表; 造词'可逆放'全库清零(14处); README 首屏加信任声明+GIF poster; 新增 SECURITY/CODE_OF_CONDUCT/SUPPORT/PR 模板",
+   "evidence": "bash scripts/acceptance.sh EXIT=0 ALL-AC-OK(AC1-AC10); 195 passed/0 failed; pre-push CI-CHECKS-OK; 三闸门 FAST-GATE-OK DEAI-OK BLOAT-OK; git push 5e43e57",
+   "verdict": "CONTINUE",
+   "closed": "2026-09-28 19:17:47",
+   "zero_delta_streak": 0
   }
  ],
  "state": "ROUND_OPEN"

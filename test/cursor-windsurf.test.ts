@@ -75,9 +75,42 @@ describe('AC-10 windsurf adapter — an encrypted store, reported as one', () =>
   });
 
   it('does not call a plain-text file encrypted', async () => {
+    // The entropy probe still says "not ciphertext" -- that measurement is about the
+    // bytes and it has not changed. What changed is where a plain-text cascade store
+    // is routed: see the next test.
     const p = await probeCascade('fixtures/windsurf-cascade-plaintext.pb');
     expect(p.looksEncrypted).toBe(false);
-    expect(await detectAdapter('fixtures/windsurf-cascade-plaintext.pb')).not.toBe('windsurf');
+  });
+
+  it('routes a plain-text cascade store by path, so no step is invented', async () => {
+    // This assertion used to be `not.toBe('windsurf')`. It was protecting a false
+    // claim: a 200-line plain-text cascade store sniffed as an ordinary JSON object,
+    // fell through to the unknown-shape fallback, and that fallback emits one
+    // `unknown` step per line -- so the report claimed a 200-step session that never
+    // happened. The store is still unreadable either way; the difference is whether
+    // the tool says so or invents a timeline.
+    expect(await detectAdapter('fixtures/windsurf-cascade-plaintext.pb')).toBe('windsurf');
+  });
+
+  it('a plain-text cascade store yields one honest note, not one step per line', async () => {
+    const s = await parseSession('fixtures/windsurf-cascade-plaintext.pb');
+    expect(s.steps).toHaveLength(1);
+    expect(s.steps[0].kind).toBe('note');
+    expect(s.steps[0].text).toMatch(/读不出来/);
+    expect(s.steps[0].text).toMatch(/不是因为/);
+    expect(s.unknownCount).toBe(0);
+  });
+
+  it('routes the real store layout by path too', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'mf-casc-'));
+    const dir = join(home, '.codeium/windsurf/cascade');
+    mkdirSync(dir, { recursive: true });
+    const f = join(dir, '4f2c-uuid.pb');
+    writeFileSync(f, '{\"conversations\":[]}\n'.repeat(50));
+    expect(await detectAdapter(f)).toBe('windsurf');
+    const s = await parseSession(f);
+    expect(s.steps).toHaveLength(1);
+    expect(s.steps[0].kind).toBe('note');
   });
 
   it('routes a .pb ciphertext to the windsurf adapter by content', async () => {

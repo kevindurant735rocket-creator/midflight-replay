@@ -67,7 +67,8 @@ if [ -d node_modules/playwright ]; then
     node dist/cli.js replay fixtures/claude-mini.jsonl  --out "$T/claude.html"   >/dev/null
     node dist/cli.js replay fixtures/script-escape.jsonl --out "$T/escape.html"  >/dev/null
     node dist/cli.js replay fixtures/cursor-mini.jsonl  --out "$T/cursor.html"   >/dev/null
-    node scripts/browser-check.mjs "$T/codex.html" "$T/claude.html" "$T/escape.html" "$T/cursor.html"
+    node dist/cli.js replay fixtures/windsurf-cascade-plaintext.pb --out "$T/windsurf.html" >/dev/null
+    node scripts/browser-check.mjs "$T/codex.html" "$T/claude.html" "$T/escape.html" "$T/cursor.html" "$T/windsurf.html"
     find "$T" -depth -delete 2>/dev/null || true'
   run "real host logs, both readable agents" npm run --silent smoke:browser:real
 else
