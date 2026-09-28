@@ -43,11 +43,60 @@ export interface RevertRefused {
 
 export type RevertResult = RevertOk | RevertRefused;
 
+const D_MARK = 'const D = ';
+
+/**
+ * Slice the embedded payload out of a report by walking braces with string
+ * awareness, NOT by matching up to the next `};`.
+ *
+ * The lazy-regex version broke on real sessions: `};` occurs constantly inside
+ * log text (any JS or JSON the agent wrote), so the match stopped mid-string and
+ * `revert` could not read reports built from exactly the code sessions it exists
+ * to inspect. Counting depth while tracking quotes and escapes finds the payload
+ * that is actually there.
+ *
+ * @returns the JSON text, or null when the braces never balance (truncated file)
+ */
+function slicePayload(html: string): string | null {
+  const at = html.indexOf(D_MARK);
+  if (at === -1) return null;
+  let start = at + D_MARK.length;
+  while (start < html.length && /\s/.test(html[start]!)) start++;
+  if (html[start] !== '{') return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) return html.slice(start, i + 1);
+  }
+  return null; // ran off the end with the object still open
+}
+
 /** Pull the embedded `const D = {...}` payload out of a report. Throws if the file is not a report. */
 export function readReportPayload(html: string): { steps: ReplayStep[]; cwd?: string } {
-  const m = html.match(/const D = (\{[\s\S]*?\});/);
-  if (!m) throw new Error('这不是 midflight 生成的报告：找不到内嵌数据 `const D = {...}`。');
-  const data = JSON.parse(m[1]) as { steps?: ReplayStep[]; meta?: { cwd?: string } };
+  if (html.indexOf(D_MARK) === -1) {
+    throw new Error('这不是 midflight 生成的报告：找不到内嵌数据 `const D = {...}`。');
+  }
+  const json = slicePayload(html);
+  if (json === null) {
+    throw new Error('报告文件不完整：内嵌数据的括号没有闭合，文件可能已被截断或损坏。');
+  }
+  let data: { steps?: ReplayStep[]; meta?: { cwd?: string } };
+  try {
+    data = JSON.parse(json) as typeof data;
+  } catch (err) {
+    throw new Error(`报告内嵌数据无法解析（文件可能已损坏）：${(err as Error).message}`);
+  }
   if (!Array.isArray(data.steps)) throw new Error('报告内嵌数据里没有 steps 数组，文件可能已损坏。');
   return { steps: data.steps, cwd: typeof data.meta?.cwd === 'string' ? data.meta.cwd : undefined };
 }

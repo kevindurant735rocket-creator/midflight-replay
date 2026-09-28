@@ -409,8 +409,8 @@ midflight --version                          打印已安装的版本
 报告能证明 agent 做了什么。`revert` 把其中一步变回一个补丁：
 
 ```
-midflight revert replay.html --list                    # 哪些步可以撤
-midflight revert replay.html --step 42 --out p.diff   # 写出补丁
+midflight revert report.html --list                  # 哪些步可以撤
+midflight revert report.html --step 2 --out p.diff   # 把那一步写成补丁
 git apply --check -R p.diff                           # 先验
 git apply -R p.diff                                   # 看完再撤
 ```

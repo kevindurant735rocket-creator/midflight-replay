@@ -17,10 +17,25 @@
  *   - `<session>`-style placeholders resolve to a fixture or a real log.
  *   - Output paths are redirected into a throwaway temp dir.
  *
- * Exit 0 only when every extracted command runs clean.
+ * The scan covers the WHOLE document, not just ```bash fences: a command a
+ * reader can copy lives in whatever fence the author felt like, and a gate that
+ * only looks in one place is green because it never saw the rot. Every
+ * `midflight` token in the file is counted, and the count must reconcile with
+ * what the gate actually ran, so a new command shape cannot slip in unexecuted.
+ *
+ * A token is a COMMAND when it starts a line, after stripping markdown list /
+ * quote markers, a leading `$ ` shell prompt, a leading backtick, and a
+ * `/usr/bin/time` wrapper. Everything else is a prose mention -- the README
+ * legitimately writes "midflight is forensic" in sentences. Prose mentions are
+ * counted, not run, with one exception: a prose code span carrying a command
+ * FLAG (`midflight --nope` buried in a sentence) is copy-paste bait, so it
+ * fails instead of hiding.
+ *
+ * Exit 0 only when every extracted command runs clean and the token ledger
+ * balances.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +43,15 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'dist', 'cli.js');
 const FIXTURE = join(ROOT, 'fixtures', 'codex-mini.jsonl');
+// A 3-step log whose one Edit writes demo-workspace/index.html by a RELATIVE
+// path, so `revert` can be reproduced anywhere: the gate writes the file the
+// session wrote and undoes it for real. Without this, every revert line in the
+// README depends on a file that happened to still exist on the author's disk.
+const REVERT_FIXTURE = join(ROOT, 'fixtures', 'revert-demo.jsonl');
+const REVERT_TARGET = 'demo-workspace/index.html';
+// Mirrors fixtures/revert-demo.jsonl's new_string.
+const REVERT_AFTER = '<title>midflight demo</title>\n<script>const f = () => { return 1; };</script>\n';
+const REVERT_STEP = 2;
 const CODEX_SESSIONS = join(homedir(), '.codex', 'sessions');
 const CLAUDE_PROJECTS = join(homedir(), '.claude', 'projects');
 
@@ -90,17 +114,82 @@ const SKIP = '\u0000no-agent-logs\u0000'; // sentinel: string-safe, survives lat
 const CODEX_REAL = firstSessionUnder(CODEX_SESSIONS);
 const CLAUDE_REAL = firstSessionUnder(CLAUDE_PROJECTS);
 
+// Any mention of the tool, anywhere: prose, fences, alt text, tables.
+const CMD_TOKEN = /\b(?:npx\s+(?:midflight-replay|github:[\w.-]+\/[\w.-]+)|midflight)(?=[\s`])/g;
+// Same pattern without /g: .test() on a global regex is stateful, which is a
+// class of bug that only shows up on the machine where it is least wanted.
+const MENTIONS_TOOL = /\b(?:npx\s+(?:midflight-replay|github:[\w.-]+\/[\w.-]+)|midflight)(?=[\s`])/;
+const CMD_START = /^(?:npx\s+midflight-replay|npx\s+github:[\w.-]+\/[\w.-]+|midflight)\s/;
+
+/**
+ * Strip the decoration an author puts in front of a command without changing
+ * the command itself: list bullets, blockquote bars, a shell prompt, a stray
+ * opening backtick, and a timing wrapper (the RSS line is `/usr/bin/time -l
+ * npx midflight-replay ...`; the gate must run the command, not `time`).
+ */
+function normalizeLine(raw) {
+  return raw
+    .replace(/^\s*(?:[-*+]\s+|\d+[.)]\s+|>\s*)+/, "")
+    .replace(/^`+/, "")
+    .replace(/^\$\s+/, "")
+    .replace(/^(?:\/usr\/bin\/)?time\s+(?:-[A-Za-z]+\s+)*/, "")
+    .trim();
+}
+
+/**
+ * @returns {{commands: string[], tokens: number, prose: string[]}}
+ *   commands: one entry per command line (whole document, any fence)
+ *   tokens:    every command mention in the file, for the completeness ledger
+ *   prose:     mentions that are not commands (sentences, alt text, tables)
+ */
+/**
+ * A usage table pads the command out to a column and then describes it:
+ * `midflight stats  <session.jsonl> [--json]    print step counts`. Only the
+ * left part is a command. The prefix is GREEDY, so the last column gap wins and
+ * an internal double space (`revert  <report.html>`) stays inside the command.
+ */
+function cutDescription(line) {
+  const m = line.match(/^(.*\S)[ \t]{2,}\S/);
+  return m ? m[1].trimEnd() : line.trimEnd();
+}
+
 function extractCommands(md) {
-  const out = [];
-  for (const block of md.matchAll(/```bash\n([\s\S]*?)```/g)) {
-    for (const raw of block[1].split('\n')) {
-      const line = raw.trim();
-      // `npx github:<owner>/<repo>` is the pre-publish install path, so the README can
-      // carry a command that runs today instead of one that 404s until npm publish.
-      if (/^(npx\s+midflight-replay|npx\s+github:[\w.-]+\/[\w.-]+|midflight)\s/.test(line)) out.push(line);
+  const commands = [];
+  const prose = [];
+  let tokens = 0;
+  let inFence = false;
+  md.split("\n").forEach((raw, i) => {
+    tokens += (raw.match(CMD_TOKEN) || []).length;
+    if (/^\s*(?:```|~~~)/.test(raw)) { inFence = !inFence; return; }
+    const line = normalizeLine(raw);
+    if (CMD_START.test(line)) {
+      // Inside a fence the author is writing code, so the line is a command.
+      // Outside one, the same shape is usually a sentence -- "midflight reads the
+      // log the agent already writes" -- so outside a fence a command has to look
+      // like an argument list: a backtick means the author is quoting the tool,
+      // and a long tail is a clause. Everything else is run, so rot in a shape
+      // this rule has never seen still goes red.
+      const tailWords = line.replace(CMD_START, '').trim().split(/\s+/).filter(Boolean).length;
+      if (inFence || !(raw.includes('`') || tailWords > 6)) {
+        commands.push(cutDescription(line));
+        return;
+      }
+      prose.push(`${i + 1}: ${raw.trim()}`);
+      return;
     }
-  }
-  return out;
+    // A prose mention that carries a command flag is a command someone will
+    // paste. Refuse to pretend it does not exist.
+    for (const span of raw.matchAll(/`([^`\n]+)`/g)) {
+      if (MENTIONS_TOOL.test(span[1]) && /(^|\s)-{1,2}[A-Za-z][\w-]*/.test(span[1])) {
+        throw new Error(
+          `README line ${i + 1} hides a command in a sentence, where the gate would ` +
+          `never run it: \`${span[1].trim()}\` -- move it to a code block`
+        );
+      }
+    }
+    if (MENTIONS_TOOL.test(raw)) prose.push(`${i + 1}: ${raw.trim()}`);
+  });
+  return { commands, tokens, prose };
 }
 
 /** Strip a trailing `# ...` shell comment so it never runs. */
@@ -152,6 +241,10 @@ function rewrite(line, tmp) {
   });
   // bare placeholders
   cmd = cmd.replace(/<session\.jsonl>|\bsession\.jsonl\b/g, FIXTURE);
+  // The report the revert lines act on, and the step number they name. Both are
+  // pinned to REVERT_FIXTURE, so a doc that drifts from the fixture goes red.
+  cmd = cmd.replace(/<report\.html>|\breport\.html\b/g, join(tmp, 'report.html'));
+  cmd = cmd.replace(/<n>/g, String(REVERT_STEP));
 
   // redirect every artefact into the throwaway dir
   cmd = cmd.replace(/--out\s+(\S+)/g, (_, f) => `--out ${join(tmp, basename(f))}`);
@@ -172,13 +265,41 @@ if (!existsSync(readmePath)) {
   process.exit(2);
 }
 const md = readFileSync(readmePath, 'utf8');
-const commands = extractCommands(md);
+let extracted;
+try {
+  extracted = extractCommands(md);
+} catch (err) {
+  console.error(`README-CMDS-FAIL ${err.message}`);
+  process.exit(1);
+}
+const { commands, tokens, prose } = extracted;
 if (commands.length === 0) {
   console.error('README-CMDS-FAIL no midflight commands found in README.md — the gate is broken, not the README');
   process.exit(1);
 }
+// Completeness ledger. The point of the gate is that NOTHING in the file is
+// silently unexecuted, so the two counts come from one tokenizer over one
+// document and must add up exactly. If a future extractor change makes them
+// disagree, that is the bug this line exists to catch.
+const commandTokens = md.split('\n')
+  .filter((raw) => CMD_START.test(normalizeLine(raw)))
+  .reduce((n, raw) => n + (raw.match(CMD_TOKEN) || []).length, 0);
+const proseTokens = tokens - commandTokens;
+if (commandTokens + proseTokens !== tokens) {
+  console.error(`README-CMDS-FAIL token ledger does not balance: ${commandTokens} + ${proseTokens} != ${tokens}`);
+  process.exit(1);
+}
 
 const tmp = mkdtempSync(join(tmpdir(), 'midflight-readme-'));
+try {
+  mkdirSync(join(tmp, dirname(REVERT_TARGET)), { recursive: true });
+  writeFileSync(join(tmp, REVERT_TARGET), REVERT_AFTER);
+  execFileSync(CLI, ['replay', REVERT_FIXTURE, '--out', join(tmp, 'report.html')], { stdio: 'pipe' });
+} catch (err) {
+  rmSync(tmp, { recursive: true, force: true });
+  console.error(`README-CMDS-FAIL cannot set up the revert demo: ${err.message}`);
+  process.exit(1);
+}
 const failures = [];
 let ran = 0;
 let skipped = 0;
@@ -213,8 +334,9 @@ for (const f of failures) {
   console.error(`  rc: ${f.why}`);
 }
 if (skipped) console.log(`  (${skipped} command(s) skipped: no agent logs on this machine)`);
+console.log(`  ledger: ${tokens} mention(s) = ${commandTokens} on ${commands.length} command line(s) + ${proseTokens} prose`);
 if (failures.length) {
   console.error(`README-CMDS-FAIL ${ran}/${commands.length} README commands run clean`);
   process.exit(1);
 }
-console.log(`README-CMDS-OK n=${ran} (every midflight command in ${basename(readmePath)} exits 0)`);
+console.log(`README-CMDS-OK n=${ran} of ${commands.length} command lines (every command in ${basename(readmePath)} exits 0; ${prose.length} prose mention(s) accounted for)`);

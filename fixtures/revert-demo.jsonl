@@ -1,0 +1,4 @@
+{"type":"atis-latch","atis":"","sessionId":"revert-demo"}
+{"parentUuid":null,"isSidechain":false,"type":"user","cwd":".","message":{"role":"user","content":"给 demo-workspace/index.html 加一行脚本。"}}
+{"parentUuid":"r0","isSidechain":false,"type":"assistant","message":{"id":"msg_revert_demo","type":"message","role":"assistant","model":"demo","content":[{"type":"text","text":"加好了。"},{"type":"tool_use","id":"call_revert_demo","name":"Edit","input":{"file_path":"demo-workspace/index.html","old_string":"<title>midflight demo</title>\n","new_string":"<title>midflight demo</title>\n<script>const f = () => { return 1; };</script>\n"}}]}}
+{"parentUuid":"r0","isSidechain":false,"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_revert_demo","type":"tool_result","content":"ok"}]}}

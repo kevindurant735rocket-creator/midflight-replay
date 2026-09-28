@@ -475,7 +475,7 @@ and how many substitutions happened — as counts, never as values.
 midflight replay <session.jsonl> [options]   build a self-contained replay
 midflight doctor <session.jsonl> [--json]    parse and report health; exit 1 on bad input
 midflight stats  <session.jsonl> [--json]    parse and print step counts
-midflight postmortem <session.jsonl> [--json] count loops, repeated edits, context pressure
+midflight postmortem <session.jsonl> [--json]    count loops, repeated edits, context pressure
 midflight revert  <report.html> --step <n>    print the patch that undoes step n
 midflight revert  <report.html> --list       show which steps are reversible
 midflight redact                            run the redactor over stdin
@@ -531,13 +531,14 @@ the answer was a timeline you had to read by hand.
 
 ### `revert` — the report's inverse
 
-A report proves what an agent did. `revert` turns one step back into a patch:
+A report proves what an agent did. `revert` turns one step back into a patch. The
+step number is the one `--list` just printed:
 
 ```
-midflight revert replay.html --list                    # which steps can be undone
-midflight revert replay.html --step 42 --out p.diff   # write the patch
-git apply --check -R p.diff                           # verify
-git apply -R p.diff                                   # then, if you agree
+midflight revert report.html --list                  # which steps can be undone
+midflight revert report.html --step 2 --out p.diff   # print that step as a patch
+git apply --check -R p.diff                          # verify it applies
+git apply -R p.diff                                  # then, if you agree
 ```
 
 It **never writes to your working tree** — the only command that does is `git apply`,

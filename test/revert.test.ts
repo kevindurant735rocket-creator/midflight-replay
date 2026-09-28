@@ -220,6 +220,44 @@ describe('revert — report payload', () => {
     expect(steps).toHaveLength(1);
   });
 
+  /**
+   * Regression, found by the README gate on a real Codex session: the payload
+   * was pulled out with a non-greedy /const D = (\{[\s\S]*?\});/ match, so
+   * the first `};` INSIDE a log string ended the payload. Any session whose
+   * agent wrote JS or JSON (`};` is everywhere in real code) produced a report
+   * that `midflight revert` could not read at all — the headline feature of
+   * the product was dead on exactly the sessions the product exists for.
+   */
+  it('survives a `};` sequence inside the payload, not just after it', () => {
+    const hostile = [
+      "const f = () => { return 1; };",
+      "};\nstill inside the same JSON string",
+      '{"nested":"};"}',
+      'trailing };',
+    ].join('\n');
+    const steps = [step({
+      name: 'Edit',
+      rawArgs: JSON.stringify({ file_path: '/repo/a.ts', note: hostile }),
+      beforeImage: hostile,
+    })];
+    const html = `<html><script>const D = ${JSON.stringify({ meta: { cwd: '/repo' }, steps })};</script></html>`;
+    const { steps: read, cwd } = readReportPayload(html);
+    expect(cwd).toBe('/repo');
+    expect(read).toHaveLength(1);
+    expect(read[0].beforeImage).toBe(hostile);
+  });
+
+  it('survives a payload whose only `};` is the real terminator', () => {
+    const steps = [step({ name: 'Edit', rawArgs: '{"file_path":"/repo/a.ts"}', beforeImage: 'x' })];
+    const html = `<script>const D = ${JSON.stringify({ steps })};</script>`;
+    expect(readReportPayload(html).steps).toHaveLength(1);
+  });
+
+  it('reports a truncated payload as damaged instead of guessing', () => {
+    const truncated = '<script>const D = {"meta":{},"steps":[</script>';
+    expect(() => readReportPayload(truncated)).toThrow(/损坏/);
+  });
+
   it('refuses a file that is not a report', () => {
     expect(() => readReportPayload('<html>nope</html>')).toThrow(/找不到内嵌数据/);
   });
