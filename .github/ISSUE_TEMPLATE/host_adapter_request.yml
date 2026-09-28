@@ -1,0 +1,44 @@
+name: 宿主适配请求
+description: 你的智能体没有被 midflight-replay 识别？在这里提，我们加适配器。
+title: "[宿主适配] <工具名> <版本>"
+labels: ["host-adapter", "需要复现"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        谢谢反馈！适配器只需要一份**脱敏后**的日志样本就能加。下面三项填好，我们会直接照着实现。
+
+        隐私提醒：提交前请删掉用户名、路径、密钥、邮箱。
+  - type: input
+    id: host
+    attributes:
+      label: 工具名与版本
+      description: 例如 "Codex CLI 0.58" 或 "Cursor 0.45"
+      placeholder: Cursor 0.45
+    validations:
+      required: true
+  - type: input
+    id: path
+    attributes:
+      label: 会话/日志文件路径模式
+      description: 贴出文件位置模式，含 ~ 开头的完整路径，不要贴单个文件的全部内容
+      placeholder: ~/.cursor/chats/**/*.json
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: 一条记录的字段结构（脱敏）
+      description: 贴 1-2 条记录，去掉值只留字段名即可
+      render: text
+      placeholder: |
+        {"role":"user","content":"...","timestamp":"..."}
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我已确认上面贴的内容不含密钥、邮箱、真实用户名或其他敏感信息
+          required: true

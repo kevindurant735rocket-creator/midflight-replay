@@ -35,6 +35,18 @@ export interface AgentSpec {
   maxDepth: number;
   /** what the row reports when the store is absent */
   absentMeans: string;
+  /**
+   * Path-level filter: a file only counts as a session record when its whole path matches.
+   * Needed whenever `match` is null, because those hosts keep other things under the same
+   * root. On this machine `midflight install` had written its own rule file into
+   * ~/.cursor/rules and the row then claimed "2 session files found" — a number that was
+   * true about the files and false about what a session is.
+   */
+  only?: RegExp;
+  /** directory names that can never hold session records, pruned during the walk */
+  pruneDirs?: RegExp;
+  /** plain-language answer for "installed, but no session data on this machine" */
+  sessionHint?: string;
 }
 
 export interface AgentHit {
@@ -48,7 +60,12 @@ export interface AgentReport {
   label: string;
   adapter: AdapterName | null;
   support: string;
-  status: 'supported' | 'unsupported' | 'absent';
+  /**
+   * `empty` is its own state on purpose: the host directory exists but holds no session
+   * record, so there is nothing for an adapter to fail at. Reporting that as `unsupported`
+   * tells the reader to go looking for a parser bug that does not exist.
+   */
+  status: 'supported' | 'unsupported' | 'absent' | 'empty';
   /** roots that actually existed on this machine */
   rootsFound: string[];
   files: number;
@@ -70,6 +87,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 6,
     absentMeans: 'no ~/.codex/sessions — Codex has not written a session here yet',
+    sessionHint: 'Codex 装在这台机器上，但还没有会话记录（会话写在 ~/.codex/sessions）',
   },
   {
     id: 'claude-code',
@@ -81,6 +99,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 4,
     absentMeans: 'no ~/.claude/projects — Claude Code has not written a session here yet',
+    sessionHint: 'Claude Code 装在这台机器上，但还没有会话记录（会话写在 ~/.claude/projects）',
   },
   {
     id: 'cursor',
@@ -92,6 +111,9 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 3,
     absentMeans: 'no ~/.cursor directory',
+    only: /[\\/]chats[\\/]/,
+    pruneDirs: /^(rules|skills|extensions|images|commands)$/,
+    sessionHint: 'Cursor 装在这台机器上，但还没找到聊天记录（Cursor 把聊天放在 ~/.cursor/chats）',
   },
   {
     id: 'gemini-cli',
@@ -103,6 +125,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 4,
     absentMeans: 'no ~/.gemini/tmp logs',
+    sessionHint: 'Gemini CLI 的目录在，但还没有会话记录（它只在 ~/.gemini/tmp 留临时日志）',
   },
   {
     id: 'opencode',
@@ -114,6 +137,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 3,
     absentMeans: 'no opencode storage directory',
+    sessionHint: 'opencode 的目录在，但还没有会话记录',
   },
   {
     id: 'github-copilot-cli',
@@ -125,6 +149,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 3,
     absentMeans: 'no ~/.config/github-copilot',
+    sessionHint: 'GitHub Copilot CLI 的配置目录在，但还没有会话记录',
   },
   {
     id: 'aider',
@@ -136,6 +161,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: false,
     maxDepth: 1,
     absentMeans: 'no ~/.aider.chat.history.md',
+    sessionHint: 'Aider 的聊天历史文件不在，暂时读不到内容',
   },
   {
     id: 'continue',
@@ -147,6 +173,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 4,
     absentMeans: 'no ~/.continue',
+    sessionHint: 'Continue 的配置目录在，但还没有会话记录',
   },
   {
     id: 'cline',
@@ -158,6 +185,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 3,
     absentMeans: 'no ~/.cline',
+    sessionHint: 'Cline 的目录在，但还没有会话记录',
   },
   {
     id: 'windsurf',
@@ -169,6 +197,9 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 3,
     absentMeans: 'no ~/.codeium/windsurf',
+    only: /[\\/]chats[\\/]|cascade[^\\/]*\.db$/i,
+    pruneDirs: /^(rules|skills|extensions|commands|bin|logs)$/,
+    sessionHint: 'Windsurf 装在这台机器上，但还没找到聊天记录（Windsurf 的对话存在它的账号侧，本机只有规则文件）',
   },
   {
     id: 'factory-droid',
@@ -180,6 +211,7 @@ export const AGENTS: AgentSpec[] = [
     recursive: true,
     maxDepth: 4,
     absentMeans: 'no ~/.factory/sessions',
+    sessionHint: 'Factory Droid 的目录在，但还没有可解码的会话文件',
   },
 ];
 
@@ -202,12 +234,14 @@ function walk(root: string, spec: AgentSpec, cap: number, out: AgentHit[], baseD
       continue;
     }
     if (st.isDirectory()) {
+      if (spec.pruneDirs?.test(name)) continue;
       if (spec.recursive && root.split('/').length - baseDepth < spec.maxDepth) {
         walk(p, spec, cap, out, baseDepth);
       }
       continue;
     }
     if (spec.match && !spec.match.test(name)) continue;
+    if (spec.only && !spec.only.test(p)) continue;
     out.push({ file: p, bytes: st.size, mtimeMs: st.mtimeMs });
   }
 }
@@ -245,12 +279,22 @@ export async function scanAgents(opts: ScanOptions): Promise<AgentReport[]> {
     let newest: AgentHit | null = null;
     for (const h of hits) if (!newest || h.mtimeMs > newest.mtimeMs) newest = h;
     const status: AgentReport['status'] =
-      hits.length === 0 ? 'absent' : spec.adapter ? 'supported' : 'unsupported';
+      hits.length === 0
+        ? found.length > 0
+          ? 'empty'
+          : 'absent'
+        : spec.adapter
+          ? 'supported'
+          : 'unsupported';
+    // The host directory exists but holds no session record. Saying "no adapter, 2 files
+    // found" there is the worst of both worlds: it names a real adapter gap and attaches a
+    // file count that is really counting rules files. Say the plain thing instead.
+    const installedButEmpty = hits.length === 0 && found.length > 0;
     const rep: AgentReport = {
       id: spec.id,
       label: spec.label,
       adapter: spec.adapter,
-      support: spec.support,
+      support: installedButEmpty ? spec.sessionHint ?? `${spec.absentMeans}; no session record under it` : spec.support,
       status,
       rootsFound: found,
       files: hits.length,
@@ -289,7 +333,8 @@ export function formatAgentTable(reports: AgentReport[]): string {
       lines.push(`${pad(r.label, 20)}  ${pad('not installed', 11)}  ${pad('-', 9)}  ${pad('-', 10)}  -`);
       continue;
     }
-    const st = r.status === 'supported' ? 'readable' : 'no adapter';
+    const st =
+      r.status === 'supported' ? 'readable' : r.status === 'empty' ? 'no records' : 'no adapter';
     const when = r.newest ? new Date(r.newestMtime).toISOString().slice(0, 10) : '-';
     lines.push(
       `${pad(r.label, 20)}  ${pad(st, 11)}  ${pad(String(r.files), 9)}  ${pad(human(r.bytes), 10)}  ${when}`,
@@ -303,7 +348,10 @@ export function formatAgentTable(reports: AgentReport[]): string {
       `${reports.length - found.length} not installed on this machine.`,
   );
   for (const r of reports) {
+    // "0 file(s) found" is noise: it only ever appeared to pad a sentence that already said
+    // there is nothing to read. A count is worth printing only when there is something to count.
     if (r.status === 'unsupported') lines.push(`  ! ${r.label}: ${r.support} (${r.files} file(s) found)`);
+    else if (r.status === 'empty') lines.push(`  - ${r.label}: ${r.support}`);
     else if (r.status === 'supported' && r.support.includes('newest log:'))
       lines.push(`  \u2713 ${r.label}: ${r.support.slice(r.support.indexOf('newest log:'))}`);
     if (r.support.includes('FAILED')) lines.push(`  ! ${r.label}: ${r.support}`);

@@ -27,8 +27,9 @@ describe('scanAgents measures instead of guessing', () => {
   // is reported with a real count, never dropped from the table.
   it('surfaces an installed agent with no adapter instead of hiding it', async () => {
     const h = home();
-    mkdirSync(join(h, '.cursor'), { recursive: true });
-    writeFileSync(join(h, '.cursor/state.json'), '{"v":1}');
+    // A real session store: Cursor writes chats under ~/.cursor/chats/<hash>/<id>.json
+    mkdirSync(join(h, '.cursor/chats/abc123'), { recursive: true });
+    writeFileSync(join(h, '.cursor/chats/abc123/session-1.json'), '{"messages":[]}');
     const r = await scanAgents({ homeDir: h });
     const cursor = r.find((x) => x.id === 'cursor')!;
     expect(cursor.status).toBe('unsupported');
@@ -37,6 +38,48 @@ describe('scanAgents measures instead of guessing', () => {
     const t = formatAgentTable(r);
     expect(t).toMatch(/Cursor/);
     expect(t).toMatch(/no adapter/);
+  });
+
+  // Regression: `midflight install` writes its own rule file into ~/.cursor/rules and
+  // ~/.codeium/windsurf/rules. Counting those made the table claim "2 session files found"
+  // on a machine where Cursor had never stored a single chat. Measured on this machine
+  // before the fix: Cursor 2 files / Windsurf 1 file, all three being our own artifacts.
+  it('does not count installed rules or skills as session records', async () => {
+    const h = home();
+    mkdirSync(join(h, '.cursor/rules/midflight-replay'), { recursive: true });
+    writeFileSync(join(h, '.cursor/rules/midflight-replay/midflight-replay.mdc'), 'rule');
+    mkdirSync(join(h, '.cursor/skills/browser-use'), { recursive: true });
+    writeFileSync(join(h, '.cursor/skills/browser-use/SKILL.md'), 'skill');
+    mkdirSync(join(h, '.codeium/windsurf/rules/midflight-replay'), { recursive: true });
+    writeFileSync(join(h, '.codeium/windsurf/rules/midflight-replay/midflight-replay.md'), 'rule');
+    const r = await scanAgents({ homeDir: h });
+    for (const id of ['cursor', 'windsurf']) {
+      const row = r.find((x) => x.id === id)!;
+      expect(row.files).toBe(0);
+      // installed, but nothing to read — a state of its own, not an adapter gap
+      expect(row.status).toBe('empty');
+      expect(row.support).not.toMatch(/no adapter/);
+    }
+  });
+
+  it('reports the real session count once a real chat exists next to the rule files', async () => {
+    const h = home();
+    mkdirSync(join(h, '.cursor/rules/midflight-replay'), { recursive: true });
+    writeFileSync(join(h, '.cursor/rules/midflight-replay/midflight-replay.mdc'), 'rule');
+    mkdirSync(join(h, '.cursor/chats/abc123'), { recursive: true });
+    writeFileSync(join(h, '.cursor/chats/abc123/session-1.json'), '{"messages":[]}');
+    writeFileSync(join(h, '.cursor/chats/abc123/session-2.json'), '{"messages":[]}');
+    const cursor = (await scanAgents({ homeDir: h })).find((x) => x.id === 'cursor')!;
+    expect(cursor.files).toBe(2);
+    expect(cursor.status).toBe('unsupported');
+  });
+
+  it('never prints a file count of zero as if it were a finding', async () => {
+    const h = home();
+    mkdirSync(join(h, '.cursor'), { recursive: true });
+    const t = formatAgentTable(await scanAgents({ homeDir: h }));
+    expect(t).not.toMatch(/0 file\(s\) found/);
+    expect(t).toMatch(/no records/);
   });
 
   it('every registry row declares an adapter or says why not', () => {
