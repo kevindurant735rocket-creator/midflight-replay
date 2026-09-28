@@ -30,6 +30,15 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   closing tag never closed the script and the whole app became one unparseable blob — zero
   page errors, zero DOM, no way to tell it apart from a slow load. Every `<` is now escaped
   as `\u003c` in the data handed to the page, which JSON and JS both decode back losslessly.
+- **Pointing `replay` at the wrong file looked exactly like success.** Any file that
+  existed produced `wrote replay.html  steps 0/0` and exit code 0 — the same sentence
+  and the same code as a healthy run, for a report with no content in it. Grab the
+  wrong path, or hand it a log that got truncated mid-write, and nothing said so.
+  `replay` now fails with exit 1 when *every* line failed to parse, prints the first
+  offending line and points at `midflight doctor` for the full reason, and warns on
+  stderr when only *some* lines are damaged. A file with zero lines is still a
+  legitimate empty session and still exits 0 — confusing those two would make the tool
+  refuse a file that was fine. `test/cli-exit.test.ts` locks all four cases.
 - `midflight agents` counted the same file twice when a host's roots overlapped
   (`.cursor` plus `.cursor/projects`), inflating session counts and bytes.
 - `parseSession`'s unknown-format fallback always picked the first adapter, because every

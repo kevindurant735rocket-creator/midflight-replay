@@ -290,6 +290,26 @@ async function cmdReplay(path: string, argv: string[]): Promise<number> {
     ...(perStepChars ? { perStepChars } : {}),
     sourceLabel: path,
   });
+  // A file whose every line failed to parse is not a session, and the one line
+  // printed below ("wrote replay.html  steps 0/0") is indistinguishable from
+  // success. `doctor` already refuses that case; `replay` must agree, or the
+  // first command a newcomer runs tells them their log is fine when it is not.
+  // The same predicate doctor uses, so the two can never drift apart.
+  if (session.parseErrors.length > 0 && session.steps.length === 0) {
+    console.error(`error: 这个文件每一行都读不懂，写出来的网页是空的。`);
+    for (const e of session.parseErrors.slice(0, 3)) {
+      console.error(`  第 ${e.line} 行：${e.error}`);
+    }
+    console.error(`  完整原因：midflight doctor ${path}`);
+    if (out) writeFileSync(out, r.html, 'utf8');
+    return 1;
+  }
+  if (session.parseErrors.length > 0) {
+    const first = session.parseErrors[0];
+    console.error(
+      `warn: ${session.parseErrors.length} 行读不懂（第一处：第 ${first.line} 行），网页里已按能读的部分渲染`,
+    );
+  }
   if (out) {
     writeFileSync(out, r.html, 'utf8');
     if (argv.includes('--json')) {
