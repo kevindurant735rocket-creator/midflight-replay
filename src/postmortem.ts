@@ -96,11 +96,38 @@ function callLabel(step: ReplayStep): string {
       }
     }
   }
-  if (!detail) detail = step.rawArgs;
-  // one line, no runs of whitespace, no giant JSON blobs
-  const flat = detail.replace(/\s+/g, ' ').trim();
-  const cut = flat.length > 48 ? `${flat.slice(0, 48)}…` : flat;
-  return cut ? `${step.name}「${cut}」` : step.name;
+  if (detail) return `${step.name}「${cut(detail)}」`;
+  // No known key carried the meaning. Dumping `{"session_id":49146.0}` is worse
+  // than useless: the reader has to parse JSON to learn one number, and JSON's
+  // `49146.0` looks like a defect in this tool rather than in the log. Name the
+  // few short scalar fields instead, and print whole numbers as whole numbers.
+  const short = a ? Object.entries(a).filter(([, v]) => scalarish(v)).slice(0, 3) : [];
+  if (short.length > 0) {
+    return `${step.name}「${short.map(([k, v]) => `${k}=${scalar(v)}`).join(' ')}」`;
+  }
+  return step.name;
+}
+
+function scalarish(v: unknown): boolean {
+  return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+}
+
+function scalar(v: unknown): string {
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(4)));
+  if (typeof v === 'string') return cut(v);
+  return String(v);
+}
+
+/** One line, no runs of whitespace, no giant blobs. */
+function cut(s: string): string {
+  const flat = s.replace(/\s+/g, " ").trim();
+  return flat.length > 48 ? `${flat.slice(0, 48)}…` : flat;
+}
+
+/** "893、897、901" — the steps that repeated, five at a time then an ellipsis. */
+function listSteps(idx: number[]): string {
+  const nums = idx.map((i) => i + 1);
+  return nums.length <= 5 ? nums.join('、') : `${nums.slice(0, 5).join('、')}…（共 ${nums.length} 次）`;
 }
 
 function pct(n: number): string {
@@ -120,7 +147,7 @@ function findLoops(steps: ReplayStep[]): Finding[] {
     .map((s, i) => ({ step: s, i }))
     .filter((x): x is { step: ReplayStep & { kind: 'tool_call' }; i: number } => x.step.kind === 'tool_call');
 
-  let run: { fp: string; idx: number[]; first: ReplayStep } | null = null;
+  let run: { fp: string; idx: number[]; first: ReplayStep & { kind: 'tool_call' } } | null = null;
   const flush = (): void => {
     if (run && run.idx.length >= LOOP_RUN_MIN) {
       const [head, ...rest] = run.idx;
@@ -130,7 +157,12 @@ function findLoops(steps: ReplayStep[]): Finding[] {
         firstStep: head,
         headline: `${callLabel(run.first)} 连续跑了 ${run.idx.length} 次，参数完全相同`,
         evidence: [
-          `第 ${head + 1}-${rest[rest.length - 1] + 1} 步：${run.fp.length > 160 ? `${run.fp.slice(0, 160)}…` : run.fp}`,
+          // "第 893-901 步" implied nine calls next to "连续 3 次" — the range
+          // counts every step, the run counts only tool calls. Name the steps
+          // that actually repeated, so the two numbers cannot disagree, and keep
+          // quoting the arguments here: this line is the proof, the headline is
+          // the signpost.
+          `第 ${listSteps(run.idx)} 步的参数都是同一个：${run.fp.length > 120 ? `${run.fp.slice(0, 120)}…` : run.fp}`,
           `连续 ${run.idx.length} 次调用，从第一次到最后一次参数一个字都没改`,
         ],
       });

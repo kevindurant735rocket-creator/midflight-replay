@@ -12,6 +12,15 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   `[log         ]` / `[file-history]` — machine padding in the one screen where a user
   decides which edit to undo. Both sources now use the Chinese words already settled
   elsewhere in this codebase, and the success line says `来源：` instead of `source=log`.
+- **A loop finding no longer prints raw JSON or a float that looks like a bug.** On a
+  real 109MiB Codex session, `write_stdin {"session_id":49146.0}` repeated three times and
+  the headline showed the whole object — the reader had to parse JSON to learn one integer,
+  and `49146.0` reads like a defect in this tool. When no known argument key carries the
+  meaning, the label now names the short scalar fields (`write_stdin「session_id=49146」`).
+- **A loop's step list matches its own count.** Evidence read `第 893-901 步` next to
+  `连续 3 次`: the range counts every step, the run counts only tool calls, so the two numbers
+  disagreed. The steps that actually repeated are now named (`第 893、897、901 步`) and the
+  arguments are still quoted — that line is the proof, the headline is the signpost.
 
 ## [0.1.2] - 2026-09-28
 

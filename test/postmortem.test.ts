@@ -244,3 +244,53 @@ describe('postmortem — where a finding points', () => {
     }
   });
 });
+
+/**
+ * A real 109MiB Codex session looped `write_stdin {"session_id":49146.0}` three
+ * times, and the finding headline printed the whole JSON object. The reader had
+ * to parse JSON to learn one integer — and `49146.0` reads like a defect in this
+ * tool, not like JSON's number format. When no known key carries the meaning,
+ * name the short scalar fields instead, and print whole numbers whole.
+ */
+describe('postmortem — a loop label is never raw JSON', () => {
+  it('names the fields and drops the float artifact', () => {
+    const args = JSON.stringify({ session_id: 49146.0, chars: '' });
+    const steps = [0, 1, 2].map(() => {
+      const s = call('write_stdin', args);
+      (s as unknown as { args: unknown }).args = args; // codex hands over JSON *text*
+      return s;
+    });
+    const loops = postmortem(steps).filter((f) => f.kind === 'loop');
+    expect(loops).toHaveLength(1);
+    const h = loops[0].headline;
+    expect(h).toContain('session_id=49146');
+    expect(h).not.toContain('49146.0');
+    expect(h).not.toContain('{"session_id"');
+    expect(h).not.toContain('}」');
+  });
+
+  /**
+   * "第 893-901 步" sat next to "连续 3 次" and the two numbers disagreed: the
+   * range counts every step, the run counts only tool calls. The steps that
+   * actually repeated are now named, so the count and the list cannot disagree.
+   */
+  it('names the repeated steps instead of a wider range', () => {
+    const edit3 = { ...edit('/repo/a.ts') };
+    const steps: ReplayStep[] = [
+      { kind: 'user', ts: 0, text: 'go' },
+      call('exec', JSON.stringify({ cmd: 'ps aux | grep x' })),
+      { kind: 'assistant', ts: 0, text: 'thinking' },
+      call('exec', JSON.stringify({ cmd: 'ps aux | grep x' })),
+      { kind: 'assistant', ts: 0, text: 'thinking' },
+      call('exec', JSON.stringify({ cmd: 'ps aux | grep x' })),
+      edit3,
+    ];
+    const loops = postmortem(steps).filter((f) => f.kind === 'loop');
+    expect(loops).toHaveLength(1);
+    const ev = loops[0].evidence.join(' ');
+    expect(ev).toContain('第 2、4、6 步');
+    expect(ev).not.toMatch(/第 2-6 步/);
+    // The proof survives: the reader still sees WHAT repeated.
+    expect(ev).toContain('ps aux | grep x');
+  });
+});
