@@ -29,7 +29,7 @@
  ],
  "goal_id": "active",
  "created": "2026-09-28 19:12:44",
- "updated": "2026-09-28 21:12:42",
+ "updated": "2026-09-28 21:21:56",
  "rounds": [
   {
    "n": 2,
@@ -83,6 +83,33 @@
    "evidence": "npx vitest run rc=0 215 passed | bash scripts/acceptance.sh rc=0 ALL-AC-OK | node scripts/browser-check.mjs docs/demo-codex.html docs/demo-claude.html rc=0 68 passed 0 failed | bash scripts/demo-samples.sh rc=0 DEMO-SAMPLES-OK | npm run check:links rc=0 LINK-CHECK-OK checked=53 | 三闸门 rc=0 FAST-GATE-OK/DEAI-OK/BLOAT-OK | git push rc=0 CI-CHECKS-OK",
    "verdict": "CONTINUE",
    "closed": "2026-09-28 21:12:42",
+   "zero_delta_streak": 0
+  },
+  {
+   "n": 4,
+   "giga_run": "midflight-r4",
+   "depts": [
+    "PMO",
+    "ARCH",
+    "UX",
+    "DEV",
+    "QA",
+    "SRE"
+   ],
+   "agent_map": {
+    "PMO": "A-PMO",
+    "ARCH": "A-ARCH",
+    "UX": "A-UX",
+    "DEV": "A-DEV",
+    "QA": "A-QA",
+    "SRE": "A-SRE"
+   },
+   "state": "CLOSED",
+   "opened": "2026-09-28 21:21:48",
+   "delta": "自动检查在真实脏会话上从假清白变成真结论：Claude Code 的 tool args 是 JSON 字符串，只有 Codex 的对象形态被读，导致 428 步真实会话里 36 个 Edit 一个都没进检测，报告对读者说『没有反复改同一处』而同一文件被重写 13 次（CLI 全量 25 次）；两种形态统一走 argsOf()，该会话现在读作『自动检查 · 2 项发现』并点名文件/次数/起始步。头部 4 个裸占位符 — 改为人话『日志没记』（不推断、不填假值），真实浏览器闸门新增『头部无裸占位符』断言。访客样例随之重建。",
+   "evidence": "npx vitest run rc=0 (218 passed/15 files) | bash scripts/acceptance.sh rc=0 ALL-AC-OK | node scripts/browser-check.mjs docs/demo-codex.html docs/demo-claude.html rc=0 (70 passed/0 failed) | bash scripts/demo-samples.sh rc=0 DEMO-SAMPLES-OK 3 files | npm run check:links rc=0 (53) | node scripts/verify-claims.mjs rc=0 | 三闸门 FAST-GATE-OK/DEAI-OK/BLOAT-OK rc=0 | 负例: 还原 editPath 后 test/postmortem.test.ts rc=1 (2 failed) | 真实会话 CLI: node dist/cli.js postmortem <claude 1.3MB log> rc=0 输出 2 条 repeated-edit | git push rc=0 CI-CHECKS-OK 609fa1c..a0158f5",
+   "verdict": "CONTINUE",
+   "closed": "2026-09-28 21:21:56",
    "zero_delta_streak": 0
   }
  ],
