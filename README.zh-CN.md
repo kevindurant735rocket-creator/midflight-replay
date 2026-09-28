@@ -73,8 +73,8 @@ open replay.html
 
 | | 你会看到 | 打开 |
 |---|---|---|
-| **交互回放** —— 一条 Codex 会话 | 拖时间轴、点任意一步、读 diff | [打开](docs/demo-codex.html) · 25 KB |
-| **交互回放** —— 一条 Claude Code 会话 | 带压缩锯齿事件的那条 | [打开](docs/demo-claude.html) · 47 KB |
+| **交互回放** —— 一条 Codex 会话 | 拖时间轴、点任意一步、读 diff | [打开](docs/demo-codex.html) · 33 KB |
+| **交互回放** —— 一条 Claude Code 会话 | 带压缩锯齿事件的那条 | [打开](docs/demo-claude.html) · 56 KB |
 | **PR 摘要块** —— GitHub 安全 | 你真正贴进 review 评论的那一份 | [打开](docs/demo-claude-paste.html) · 1 KB |
 
 第三个才是这个项目的重点。GitHub 会剥掉 `<script>` 和 `<style>`，所有 HTML

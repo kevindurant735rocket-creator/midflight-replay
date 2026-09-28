@@ -38,6 +38,7 @@ run "unit tests"          npm test --silent
 run "internal links"      npm run --silent check:links
 run "README commands"     npm run --silent check:readme
 run "README numbers"      npm run --silent check:claims
+run "committed samples"    bash scripts/demo-samples.sh
 
 step "the shipped tarball"
 run "pack + install + every subcommand" bash scripts/verify-tarball.sh
@@ -83,7 +84,8 @@ if [ -d node_modules/playwright ]; then
     node dist/cli.js replay fixtures/cursor-mini.jsonl  --out "$T/cursor.html"   >/dev/null
     node dist/cli.js replay fixtures/windsurf-cascade-plaintext.pb --out "$T/windsurf.html" >/dev/null
     node dist/cli.js replay fixtures/codex-mini.jsonl --out "$T/thin.html" --max-steps 5 >/dev/null
-    node scripts/browser-check.mjs "$T/codex.html" "$T/claude.html" "$T/escape.html" "$T/cursor.html" "$T/windsurf.html" "$T/thin.html"
+    node scripts/browser-check.mjs "$T/codex.html" "$T/claude.html" "$T/escape.html" "$T/cursor.html" "$T/windsurf.html" "$T/thin.html" \
+      docs/demo-codex.html docs/demo-claude.html
     find "$T" -depth -delete 2>/dev/null || true'
   run "real host logs, both readable agents" npm run --silent smoke:browser:real
 else

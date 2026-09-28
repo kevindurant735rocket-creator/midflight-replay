@@ -26,10 +26,19 @@ h1 small{color:var(--dim);font-weight:400;margin-left:8px}
 .cov .fill{height:100%;background:var(--acc)}
 .cov.full .fill{background:#3fb950}.cov.partial .fill{background:#d29922}.cov.diff-only .fill{background:#f85149}
 .cov .why{color:var(--dim);font-size:12px}
+.pm{margin-top:8px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#0b0f14}
+.pm-row{display:flex;gap:6px;align-items:baseline;padding:4px 6px;border-radius:4px;cursor:pointer;font-size:12px}
+.pm-row:hover{background:#161b22}
+.pm-row .tag{flex:none}
+.pm-row .pm-step{flex:none;margin-left:auto;color:var(--dim);white-space:nowrap}
+.pm .pm-shape{color:var(--fg);font-size:12px;margin-top:6px;letter-spacing:.02em}
+.pm .why{color:var(--dim);font-size:12px;margin-top:4px}
+.pm-clean{color:var(--dim);font-size:12px}
 main{display:grid;grid-template-columns:1fr 1fr;gap:0;height:calc(100vh - 150px)}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
 .pane{overflow:auto;padding:0 0 40px}
 .pane.left{border-right:1px solid var(--line)}
+.ctxnone{padding:14px 16px;border-bottom:1px solid var(--line);background:#0b0f14;color:var(--dim);font-size:12.5px;line-height:1.8}.ctxnone b{color:var(--fg)}
 .axiswrap{padding:10px 14px;border-bottom:1px solid var(--line);background:#0b0f14}
 .axlabel{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;margin-bottom:4px}
 svg{display:block;width:100%;cursor:crosshair}
@@ -62,7 +71,7 @@ pre{margin:6px 0;padding:8px;background:#0b0f14;border:1px solid var(--line);bor
 </head><body>
 <noscript><p style="padding:16px">This replay needs JavaScript. All data is embedded in this file; nothing is fetched from the network.</p></noscript>
 <script>
-const D = {"meta":{"sessionId":"01a0b75a-b1c9-7d90-b54a-49d83888f0ba","agent":"codex","sourceFile":"fixtures/codex-mini.jsonl","cliVersion":"0.147.0","cwd":"/HOME/Documents/Codex/2026-09-18/dsh-desktop-agent-dsh-agent-agent/outputs/real-phase4/timeout","provider":"custom","startedAt":1789782569420,"model":"muse-spark-1.3-contributor","effort":"medium","contextWindow":243200},"steps":[{"kind":"turn_start","ts":1789782569616,"turnId":"01a0b75a-b282-7241-9a3e-176b9da8df06","contextWindow":243200},{"kind":"assistant","ts":1789782571162,"text":"<skills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short path that can be expanded into an absolute path using the skill roots table.\n### Skill roots\n- `r0` = `/HOME/.codex/skills`\n- `r1` = `/HOME/.agents/skills`\n- `r2` = `/HOME/.codex/skills/.system`\n- `r3` = `/HOME/.codex/plugins/cache/openai-primary-runtime`\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, te (file: r2/imagegen/SKILL.md)\n- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and (file: r2/openai-docs/SKILL.md)\n- plugin-creator: Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/ (file: r2/plugin-creator/SKILL.md)\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an exist (file: r2/skill-creator/SKILL.md)\n- skill-installer: Install Codex s"},{"kind":"user","ts":1789782571162,"text":"<recommended_plugins>\nHere is a list of plugins that are available but not installed.\n\n- Dropbox (app-69b31dc2110c8191b8b47dc98fe5a052@openai-curated-remote)\n- Box (box@openai-curated-remote)\n- Codex Security (codex-security@openai-curated-remote)\n- Figma (figma@openai-curated-remote)\n- Linear (linear@openai-curated-remote)\n- Notion (notion@openai-curated-remote)\n- Outlook Calendar (outlook-calendar@openai-curated-remote)\n- Outlook Email (outlook-email@openai-curated-remote)\n- SharePoint (sharepoint@openai-curated-remote)\n- Slack (slack@openai-curated-remote)\n- Teams (teams@openai-curated-remote)\n<\/recommended_plugins>\n# AGENTS.md instructions\n\n<INSTRUCTIONS>\n# Global Background (always-on, not routed)\n\nThese run automatically by condition — never pick as \"main skill\".\n\n- Guards (`~/.codex/global-background/`): caveman(full, always-on, ~75% cut) + stuck-guard (same tool 2x identical / same-file edit fail 2x -> stop+replan), error-handler-skill (classify -> retry>=3 -> fallback -> split), tiered-compression (chars/4 estimate, >55% -> compress), plan-persistence (multi-step -> markdown plan).\n- Memory auto-capture via agentmemory-hooks (`~/.agents/skills/agentmemory-*`, user-invocabl"},{"kind":"note","ts":1789782571162,"level":"info","text":"world_state snapshot (full): keys=[agents_md, apps_instructions, environments, environments_instructions, git_attribution, host_skills, model, multi_agent_mode, orchestrator_skills, permissions, personality, plugins_instructions, realtime, skills]"},{"kind":"turn_start","ts":1789782571163,"turnId":"01a0b75a-b282-7241-9a3e-176b9da8df06","model":"muse-spark-1.3-contributor","effort":"medium"},{"kind":"user","ts":1789782571198,"text":"Create a file work.txt containing the word hello. Then also do a thorough review pass. Work carefully."},{"kind":"assistant","ts":1789782575685,"text":"Making your hello file and reviewing it now."},{"kind":"tool_call","ts":1789782575685,"callId":"call_01a0b75ac7f2728bbbe35facf2b6575c","name":"exec_command","args":"{\"cmd\":\"echo hello > work.txt && cat work.txt && ls -l\"}","rawArgs":"{\"cmd\":\"echo hello > work.txt && cat work.txt && ls -l\"}"},{"kind":"tool_output","ts":1789782575728,"callId":"call_01a0b75ac7f2728bbbe35facf2b6575c","output":"aborted by user after 0.1s","truncated":false},{"kind":"usage","ts":1789782575728,"input":11593,"cachedInput":0,"output":109,"reasoning":29,"total":11702,"contextWindow":243200},{"kind":"user","ts":1789782575733,"text":"<turn_aborted>\nThe user interrupted the previous turn on purpose. Any running unified exec processes may still be running in the background. If any tools/commands were aborted, they may have partially executed.\n<\/turn_aborted>"},{"kind":"note","ts":1789782575734,"level":"warn","text":"turn aborted: interrupted after 6s"}],"ctx":{"cumulative":[[0,0,0,0],[1200,0,0,0],[2400,0,0,0],[2400,0,0,0],[2400,0,0,0],[2502,0,0,0],[2546,0,0,0],[2546,0,0,0],[2546,0,26,0],[2546,0,26,0],[2772,0,26,0],[2772,0,26,0]],"firstStep":[1,-1,8,-1],"evaporated":[0,0,0,0,0,0,0,0,0,0,0,0],"hasFirstHandCompaction":false,"unexplainedDrops":0},"coverage":{"agent":"codex","edits":0,"withBefore":0,"ratio":1,"shellMutations":1,"verdict":"diff-only","reason":"该 host 没有结构化编辑工具：1 处改动全部由 shell 命令承载（按命令文本启发式识别），日志未记录任何 before-image，因此只能看命令本身，不能逆放。"},"thin":{"kept":12,"total":12,"truncated":false,"banner":""},"parseErrorCount":0,"parseErrorSample":[],"warnings":[],"sourceLabel":"fixtures/codex-mini.jsonl","cats":[{"id":"conversation","label":"对话"},{"id":"reasoning","label":"推理"},{"id":"tool_output","label":"工具输出"},{"id":"compaction","label":"压缩摘要"}]};
+const D = {"meta":{"sessionId":"01a0b75a-b1c9-7d90-b54a-49d83888f0ba","agent":"codex","sourceFile":"fixtures/codex-mini.jsonl","cliVersion":"0.147.0","cwd":"/HOME/Documents/Codex/2026-09-18/dsh-desktop-agent-dsh-agent-agent/outputs/real-phase4/timeout","provider":"custom","startedAt":1789782569420,"model":"muse-spark-1.3-contributor","effort":"medium","contextWindow":243200},"steps":[{"kind":"turn_start","ts":1789782569616,"turnId":"01a0b75a-b282-7241-9a3e-176b9da8df06","contextWindow":243200},{"kind":"assistant","ts":1789782571162,"text":"\u003cskills_instructions>\n## Skills\nA skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and a short path that can be expanded into an absolute path using the skill roots table.\n### Skill roots\n- `r0` = `/HOME/.codex/skills`\n- `r1` = `/HOME/.agents/skills`\n- `r2` = `/HOME/.codex/skills/.system`\n- `r3` = `/HOME/.codex/plugins/cache/openai-primary-runtime`\n### Available skills\n- imagegen: Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, te (file: r2/imagegen/SKILL.md)\n- openai-docs: Use for Codex models/pricing, scheduled tasks, skills, settings, setup, troubleshooting, customization, automations, and (file: r2/openai-docs/SKILL.md)\n- plugin-creator: Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/ (file: r2/plugin-creator/SKILL.md)\n- skill-creator: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an exist (file: r2/skill-creator/SKILL.md)\n- skill-installer: Install Codex s"},{"kind":"user","ts":1789782571162,"text":"\u003crecommended_plugins>\nHere is a list of plugins that are available but not installed.\n\n- Dropbox (app-69b31dc2110c8191b8b47dc98fe5a052@openai-curated-remote)\n- Box (box@openai-curated-remote)\n- Codex Security (codex-security@openai-curated-remote)\n- Figma (figma@openai-curated-remote)\n- Linear (linear@openai-curated-remote)\n- Notion (notion@openai-curated-remote)\n- Outlook Calendar (outlook-calendar@openai-curated-remote)\n- Outlook Email (outlook-email@openai-curated-remote)\n- SharePoint (sharepoint@openai-curated-remote)\n- Slack (slack@openai-curated-remote)\n- Teams (teams@openai-curated-remote)\n\u003c/recommended_plugins>\n# AGENTS.md instructions\n\n\u003cINSTRUCTIONS>\n# Global Background (always-on, not routed)\n\nThese run automatically by condition — never pick as \"main skill\".\n\n- Guards (`~/.codex/global-background/`): caveman(full, always-on, ~75% cut) + stuck-guard (same tool 2x identical / same-file edit fail 2x -> stop+replan), error-handler-skill (classify -> retry>=3 -> fallback -> split), tiered-compression (chars/4 estimate, >55% -> compress), plan-persistence (multi-step -> markdown plan).\n- Memory auto-capture via agentmemory-hooks (`~/.agents/skills/agentmemory-*`, user-invocabl"},{"kind":"note","ts":1789782571162,"level":"info","text":"world_state snapshot (full): keys=[agents_md, apps_instructions, environments, environments_instructions, git_attribution, host_skills, model, multi_agent_mode, orchestrator_skills, permissions, personality, plugins_instructions, realtime, skills]"},{"kind":"turn_start","ts":1789782571163,"turnId":"01a0b75a-b282-7241-9a3e-176b9da8df06","model":"muse-spark-1.3-contributor","effort":"medium"},{"kind":"user","ts":1789782571198,"text":"Create a file work.txt containing the word hello. Then also do a thorough review pass. Work carefully."},{"kind":"assistant","ts":1789782575685,"text":"Making your hello file and reviewing it now."},{"kind":"tool_call","ts":1789782575685,"callId":"call_01a0b75ac7f2728bbbe35facf2b6575c","name":"exec_command","args":"{\"cmd\":\"echo hello > work.txt && cat work.txt && ls -l\"}","rawArgs":"{\"cmd\":\"echo hello > work.txt && cat work.txt && ls -l\"}"},{"kind":"tool_output","ts":1789782575728,"callId":"call_01a0b75ac7f2728bbbe35facf2b6575c","output":"aborted by user after 0.1s","truncated":false},{"kind":"usage","ts":1789782575728,"input":11593,"cachedInput":0,"output":109,"reasoning":29,"total":11702,"contextWindow":243200},{"kind":"user","ts":1789782575733,"text":"\u003cturn_aborted>\nThe user interrupted the previous turn on purpose. Any running unified exec processes may still be running in the background. If any tools/commands were aborted, they may have partially executed.\n\u003c/turn_aborted>"},{"kind":"note","ts":1789782575734,"level":"warn","text":"turn aborted: interrupted after 6s"}],"ctx":{"cumulative":[[0,0,0,0],[4314,0,0,0],[8685,0,0,0],[8685,0,0,0],[8685,0,0,0],[8787,0,0,0],[8831,0,0,0],[8831,0,0,0],[8831,0,26,0],[8831,0,26,0],[9057,0,26,0],[9057,0,26,0]],"firstStep":[1,-1,8,-1],"evaporated":[0,0,0,0,0,0,0,0,0,0,0,0],"hasFirstHandCompaction":false,"unexplainedDrops":0},"coverage":{"agent":"codex","edits":0,"withBefore":0,"withBeforeLog":0,"withBeforeBackup":0,"backups":0,"missing":0,"ratio":1,"shellMutations":1,"totalChanges":1,"reversibleRatio":0,"verdict":"diff-only","reason":"该 host 没有结构化编辑工具：1 处改动全部由 shell 命令承载（按命令文本启发式识别），日志未记录任何 before-image，因此只能看命令本身，不能逆放。"},"postmortem":[],"thin":{"kept":12,"total":12,"truncated":false,"droppedByKind":{},"banner":""},"unknownCount":0,"parseErrorCount":0,"parseErrorSample":[],"warnings":[],"sourceLabel":"fixtures/codex-mini.jsonl","cats":[{"id":"conversation","label":"对话"},{"id":"reasoning","label":"推理"},{"id":"tool_output","label":"工具输出"},{"id":"compaction","label":"压缩摘要"}]};
 const S = D.steps, N = S.length;
 const KIND_COLOR = {user:"--s-user",assistant:"--s-assistant",reasoning:"--s-reasoning",tool_call:"--s-tool_call",
   tool_output:"--s-tool_output",usage:"--s-usage",turn_start:"--s-turn_start",turn_end:"--s-turn_end",
@@ -74,6 +83,12 @@ const el = (t,cls,h)=>{const e=document.createElement(t); if(cls)e.className=cls
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const kb = n => n>1e6 ? (n/1048576).toFixed(1)+"M" : n>1e3 ? (n/1024).toFixed(1)+"k" : String(n);
 const kindOf = i => (S[i]||{}).kind || "unknown";
+// Claude Code injects its own plumbing into the user turn: a slash command the
+// reader never typed (/model), the command's stdout, and a "Caveat" footer. They
+// arrive as user records, so the list credited them to the reader ("用户") and
+// asked them to explain their own CLI. Name them for what they are.
+const CHROME = /^<(command-name|local-command-stdout|local-command-caveat)[ >]/;
+const labelOf = s => (s.kind==="user" && CHROME.test(s.text||"") ? "命令行" : (KIND_CN[s.kind]||s.kind));
 const colorOf = i => "var("+(KIND_COLOR[kindOf(i)]||"--s-unknown")+")";
 let cur = -1, playing = false, timer = null;
 
@@ -89,13 +104,21 @@ const EDIT_RE = /\b(edit|write|multiedit|notebookedit|apply_patch|str_replace)\b
 function diffFor(s){
   if(s.kind!=="tool_call"||!EDIT_RE.test(s.name||"")) return null;
   let a=null; try{a=JSON.parse(s.rawArgs||"")}catch(e){}
-  const nw = a && (typeof a.new_string==="string"?a.new_string:typeof a.newText==="string"?a.newText:typeof a.content==="string"?a.content:null);
+  // s.newText is the same string already lifted out of the args and clipped on its own, so it
+  // still exists when per-step clipping has made rawArgs unparseable.
+  const nw = (typeof s.newText==="string"&&s.newText!==""?s.newText:null)
+    || (a && (typeof a.new_string==="string"?a.new_string:typeof a.newText==="string"?a.newText:typeof a.content==="string"?a.content:null));
   if(nw==null) return null;
-  const od = a && (typeof a.old_string==="string"?a.old_string:typeof a.oldText==="string"?a.oldText:null);
+  const log = a && (typeof a.old_string==="string"?a.old_string:typeof a.oldText==="string"?a.oldText:null);
+  // P0-1: when the log carried no old_string, the before-image may have been recovered from
+  // the host's own backup store. The badge says which one, because they are not equally strong.
+  const rec = (log==null && typeof s.beforeImage==="string" && s.beforeImage!=="") ? s.beforeImage : null;
+  const od = log!=null ? log : rec;
+  const src = log!=null ? "log" : "file-history";
   const nb=nw.split("\n");
-  if(od!=null){ const d=lcs(od.split("\n"),nb); if(d) return {recon:true,lines:d};
-    return {recon:true,lines:od.split("\n").map((t,i)=>["del",t,String(i+1)]).concat(nb.map((t,i)=>["add",t,String(i+1)]))}; }
-  return {recon:false,lines:nb.map((t,i)=>["add",t,String(i+1)])};
+  if(od!=null){ const d=lcs(od.split("\n"),nb); if(d) return {recon:true,lines:d,src:src};
+    return {recon:true,lines:od.split("\n").map((t,i)=>["del",t,String(i+1)]).concat(nb.map((t,i)=>["add",t,String(i+1)])),src:src}; }
+  return {recon:false,lines:nb.map((t,i)=>["add",t,String(i+1)]),src:src};
 }
 
 /* ---- dual axis (AC-3b) ---- */
@@ -116,16 +139,29 @@ function drawAxes(){
   s1.addEventListener("click",e=>{const t=e.target.getAttribute("data-i"); if(t!==null) select(+t);});
   wrap.appendChild(s1);
 
-  const l2 = el("div","axlabel"); l2.style.marginTop="10px";
+  const l2 = el("div","axlabel"); l2.style.marginTop="10px"; l2.style.display="block"; l2.style.lineHeight="1.7";
   const cg = D.ctx;
-  l2.innerHTML = "<span>副轴 · 上下文构成（字符质量，非精确 token 归因）</span><span>"+
+  l2.innerHTML = "<span>副轴 · 上下文占用（按字符数估算，不是精确 token 数）</span><span>"+
     (cg.hasFirstHandCompaction ? "⇣ 第一手压缩事件 "+cg.evaporated.filter(x=>x>0).length+" 次" : "未观测到压缩事件")+
-    " · 点击色块跳到该类内容首次进入上下文的一步</span>";
+    " · 点击色块跳到该类内容首次进入上下文的一步"+
+    (D.thin&&D.thin.truncated ? " · 已抽稀会话：曲线在<b>全量</b>步上测量后按显示点采样，不受丢弃影响" : "")+
+    "</span>";
   wrap.appendChild(l2);
   const s2 = document.createElementNS("http://www.w3.org/2000/svg","svg");
   s2.setAttribute("viewBox","0 0 1000 34"); s2.setAttribute("preserveAspectRatio","none"); s2.setAttribute("height","34");
-  let maxTot = 1;
-  for(let i=0;i<N;i++){ const c=cg.cumulative[i]; if(c){ let t=0; for(const v of c) t+=v; if(t>maxTot) maxTot=t; } }
+  let maxTot = 1, anyCtx = false;
+  for(let i=0;i<N;i++){ const c=cg.cumulative[i]; if(c){ let t=0; for(const v of c) t+=v; if(t>0) anyCtx=true; if(t>maxTot) maxTot=t; } }
+  // No context data anywhere: say so instead of drawing four flat bands along the
+  // bottom edge, which reads as "the context never grew" rather than "this log
+  // carries no token counts". Windsurf is the known case -- its on-disk store is
+  // encrypted, so there is nothing to measure.
+  if(!anyCtx){
+    const note=el("div","ctxnone");
+    note.innerHTML="<b>这份日志里没有上下文数据</b> · 宿主没有记录 token 用量，"+
+      "所以画不出占用曲线。<br>副轴不是空的，是<b>测不了</b>——上面那排色块才是真实步骤数。";
+    wrap.appendChild(note);
+    return wrap;
+  }
   const colors=["--c-conversation","--c-reasoning","--c-tool_output","--c-compaction"];
   // Stacked, not overlapping: each band sits on the sum of the bands below it, so the total
   // silhouette is the whole context and a band's thickness is its share. Drawing every band
@@ -149,7 +185,7 @@ function drawAxes(){
   D.cats.forEach((c,k)=>{ const sp=el("span"); sp.innerHTML='<i class="swatch" style="background:var('+colors[k]+')"></i>'+esc(c.label);
     sp.title="首次进入：第 "+(cg.firstStep[k]>=0? cg.firstStep[k]+1 : "—")+" 步";
     sp.addEventListener("click",()=>{ const fs=cg.firstStep[k]; if(fs>=0) select(fs); }); lg.appendChild(sp); });
-  const gh=el("span"); gh.innerHTML='<i class="swatch ghost"></i>蒸发（压缩丢弃）'; lg.appendChild(gh);
+  const gh=el("span"); gh.innerHTML='<i class="swatch ghost"></i>压缩时丢弃的内容'; lg.appendChild(gh);
   wrap.appendChild(lg);
   return wrap;
 }
@@ -167,7 +203,7 @@ function drawRows(){
       const r=el("div","row"+(i===cur?" sel":""));
       const prev = i>0? S[i-1].ts : s.ts;
       const dt = i>0? " +"+Math.max(0,Math.round((s.ts-prev)/1000))+"s" : "";
-      r.innerHTML='<div class="i">#'+(i+1)+'</div><div class="k" style="color:'+colorOf(i)+'">'+esc(KIND_CN[k]||k)+
+      r.innerHTML='<div class="i">#'+(i+1)+'</div><div class="k" style="color:'+colorOf(i)+'">'+esc(labelOf(s))+
         (k==="compaction"?" ⇣":"")+'</div><div class="p">'+esc(preview(s))+'</div>';
       r.title="t+"+dt;
       r.dataset.i = String(i);
@@ -176,15 +212,34 @@ function drawRows(){
     }
     const s=S[cur];
     if(s&&s.kind==="compaction"){
-      const g=el("div","row ghost"); g.innerHTML='<div class="i"></div><div class="k" style="color:var(--c-compaction)">蒸发</div><div class="p">压缩丢弃 '+
-        kb(D.ctx.evaporated[cur]||0)+' 字符上下文 →</div>'; box.insertBefore(g, box.children[cur-start]||null);
+      const g=el("div","row ghost"); g.innerHTML='<div class="i"></div><div class="k" style="color:var(--c-compaction)">压缩丢弃</div><div class="p">丢弃 '+
+        kb(D.ctx.evaporated[cur]||0)+' 字符 →</div>'; box.insertBefore(g, box.children[cur-start]||null);
     }
   };
   box._paint=paint; paint(); return box;
 }
+// The raw text of a CLI-injected turn is XML plumbing wrapped around one fact:
+// which slash command ran, or what it printed. Show the fact.
+function chrome(s){
+  if(s.kind!=="user") return "";
+  const t = String(s.text||"");
+  if(!CHROME.test(t)) return "";
+  const grab = re => { const m = re.exec(t); return m ? m[1].trim() : ""; };
+  // A caveat or an output line often arrives with no command-name in the same
+  // record, so read those first — otherwise they fall through to a shrug.
+  const out = grab(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/);
+  if(out) return "命令输出："+out;
+  const cav = grab(/<local-command-caveat>([\s\S]*?)<\/local-command-caveat>/);
+  if(cav) return "命令行说明："+cav;
+  const raw = grab(/<command-name>([\s\S]*?)<\/command-name>/);
+  if(!raw) return "（命令行的附带信息）";
+  const name = raw.replace(/^\//,"");
+  const msg = grab(/<command-message>([\s\S]*?)<\/command-message>/);
+  return msg && msg!==raw && msg!==name ? "执行了命令 /"+name+"："+msg : "执行了命令 /"+name;
+}
 function preview(s){
   switch(s.kind){
-    case "user": case "assistant": return s.text;
+    case "user": case "assistant": return chrome(s) || s.text;
     case "reasoning": return s.summary;
     case "tool_call": return s.name+"  "+String(s.args||"").slice(0,160);
     case "tool_output": return String(s.output||"").slice(0,200);
@@ -204,19 +259,28 @@ function detail(){
   box.id = "detail"; // select() swaps this node in; without the id the pane never updates
   if(cur<0){ box.innerHTML='<h2>详情</h2><div class="empty">未选择步骤</div>'; return box; }
   const s=S[cur], k=s.kind;
-  let h='<h2><span class="tag" style="color:'+colorOf(cur)+'">'+esc(KIND_CN[k]||k)+'</span>第 '+(cur+1)+' / '+N+' 步</h2>';
-  h += '<div class="kv">时间 <b>'+new Date(s.ts).toISOString().replace("T"," ").slice(0,19)+'</b>';
-  if(s.ts-S[0].ts>=0) h += ' · 相对 <b>+'+fmtDur(s.ts-S[0].ts)+'</b>';
+  let h='<h2><span class="tag" style="color:'+colorOf(cur)+'">'+esc(labelOf(s))+'</span>第 '+(cur+1)+' / '+N+' 步</h2>';
+  // A record with no timestamp of its own is dated at the session start, i.e. 0,
+  // which would print the Unix epoch on the first step of a real session. Kept
+  // to one line: this text ships inside every generated report.
+  if(!s.ts) h += '<div class="kv">时间 <b>未知</b> · 这条记录自己没写时间，显示顺序仍然准确';
+  else {
+    h += '<div class="kv">时间 <b>'+new Date(s.ts).toISOString().replace("T"," ").slice(0,19)+'</b>';
+    if(s.ts-S[0].ts>=0) h += ' · 相对 <b>+'+fmtDur(s.ts-S[0].ts)+'</b>';
+  }
   if(k==="usage") h += ' · 上下文占用 <b>'+(s.contextWindow? (100*s.input/s.contextWindow).toFixed(1)+"% ("+kb(s.input)+"/"+kb(s.contextWindow)+")" : kb(s.input))+'</b>';
   h += '</div>';
-  if(s.kind==="reasoning"||s.kind==="compaction"||s.kind==="user"||s.kind==="assistant") h += "<pre>"+esc(s.text||s.summary)+"</pre>";
+  if(s.kind==="reasoning"||s.kind==="user"||s.kind==="assistant") h += "<pre>"+esc(s.text||s.summary)+"</pre>";
   if(s.kind==="tool_call"){
     h += '<div class="kv">工具 <b>'+esc(s.name)+'</b> · call_id <b>'+esc(s.callId)+'</b></div>';
     const d = diffFor(s);
     if(d){
       h += '<div class="kv">'+(d.recon
-        ? '<span class="badge ok">before-image 可用 · 可撤回</span>'
-        : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+'</div>';
+        ? (d.src==="file-history"
+            ? '<span class="badge warn" title="日志本身没有 old_string；这一份 before-image 由宿主自己的备份（~/.claude/file-history）按内容比对还原，原始文件路径未记录。">before-image 来自 file-history 备份 · 可撤回（非日志内联）</span>'
+            : '<span class="badge ok">before-image 可用 · 可撤回</span>')
+        : '<span class="badge err">无 before-image · 仅 diff，不能逆放</span>')+
+        (d.recon && d.src==="file-history" && s.beforeImageFrom ? ' <span class="badge">备份 '+esc(s.beforeImageFrom)+'</span>':'')+'</div>';
       h += '<div class="diff">'+d.lines.map(l=>'<div class="'+l[0]+'"><span class="ln">'+esc(String(l[2]??""))+'</span>'+(l[0]==="add"?"+":l[0]==="del"?"-":" ")+esc(l[1])+'</div>').join("")+'</div>';
     }
     h += "<pre>"+esc(String(s.args||""))+"</pre>";
@@ -224,8 +288,10 @@ function detail(){
   if(s.kind==="tool_output") h += '<div class="kv">'+(s.truncated?'<span class="badge warn">已截断</span> ':'')+'</div><pre>'+esc(s.output)+"</pre>";
   if(s.kind==="usage") h += '<div class="kv">输入 <b>'+kb(s.input)+'</b>（缓存 '+kb(s.cachedInput)+'） · 输出 <b>'+kb(s.output)+'</b> · 推理 <b>'+kb(s.reasoning)+
     '</b> · 本次合计 <b>'+kb(s.total)+'</b>'+(s.threadTotal!=null?' · 线程累计 <b>'+kb(s.threadTotal)+'</b>':'')+'</div>';
-  if(s.kind==="compaction") h += '<div class="kv"><span class="badge warn">⇣ 上下文压缩</span> 压缩前上下文 <b>'+kb(s.contextBefore||0)+
-    '</b> 字符 · 被丢弃 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符</div>';
+  if(s.kind==="compaction") h += '<div class="kv"><span class="badge warn">⇣ 上下文压缩</span>'+
+    (s.contextBefore!=null ? ' 宿主上报压缩前 <b>'+kb(s.contextBefore)+'</b> token' : ' 宿主未上报压缩前 token 数')+
+    ' · 本次压缩丢弃 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符（字符统计，不是 token）</div>'+
+    (s.summary? '<pre>'+esc(s.summary)+'</pre>' : '');
   if(s.kind==="note") h += '<div class="'+(s.level==="info"?"kv":(s.level==="warn"?"kv warn":"kv err"))+'">'+esc(s.text)+"</div>";
   box.innerHTML=h; return box;
 }
@@ -240,8 +306,13 @@ function select(i){
 }
 function move(d){ if(cur<0) select(0); else select(cur+d); }
 function play(){
+  // A one-step report has nothing to play through. Without this the button accepts the
+  // click, the interval fires, immediately hits the end and resets -- so the label
+  // never changes and the button looks broken. Say what is true instead.
+  if(N<2){ const b=document.getElementById("play"); if(b){b.textContent="只有 1 步"; b.disabled=true; b.style.opacity=".55"; b.style.cursor="default";} return; }
   if(playing) return stop();
-  playing=true; timer=setInterval(()=>{ if(cur>=N-1){stop();return;} select(cur+1); }, 220);
+  playing=true; const pb=document.getElementById("play"); if(pb) pb.textContent="❚❚ 暂停";
+  timer=setInterval(()=>{ if(cur>=N-1){stop();return;} select(cur+1); }, 220);
   document.getElementById("play").textContent="⏸ 暂停";
 }
 function stop(){ playing=false; if(timer)clearInterval(timer); const b=document.getElementById("play"); if(b)b.textContent="▶ 播放"; }
@@ -261,24 +332,59 @@ document.addEventListener("keydown",e=>{
 function header(){
   const m=D.meta, c=D.coverage;
   const h=el("header");
-  const metas=[["会话",m.sessionId],["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
-    ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow):"—"],
+  const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
+    ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow)+" token":"—"],
     ["来源",D.sourceLabel]];
-  let hh='<h1>midflight <small>agent 会话回放 · 事后法证</small></h1><div class="meta">';
+  let hh='<h1>midflight <small>agent 会话回放 · 自动检查</small></h1><div class="meta">';
   for(const [k,v] of metas) hh+='<span>'+esc(k)+' <b>'+esc(String(v))+'</b></span>';
   hh+='</div>';
   hh+='<div class="badges">'+
     '<span class="badge ok">✓ 不写工作区</span><span class="badge ok">✓ 不引 git</span><span class="badge ok">✓ 不伪造快照</span>'+
     '<span class="badge '+(D.parseErrorCount? "warn":"ok")+'">'+(D.parseErrorCount? "⚠ "+D.parseErrorCount+" 行损坏（已保留其余）" : "✓ 0 行损坏")+'</span>'+
     (D.ctx.unexplainedDrops? '<span class="badge warn">'+D.ctx.unexplainedDrops+" 次未解释的上下文下降</span>":'')+
+    (D.unknownCount? '<span class="badge ok" title="host 写入的会话元数据与未分类记录；已渲染并可拖动，不是解析失败。预算不足时会被 thin() 优先丢弃，丢弃量见下方提示。">'+D.unknownCount+
+      ' 步为会话元数据 / 未分类（已渲染）</span>':'')+
     '</div>';
-  const pct=Math.round(c.ratio*100);
+  // The bar answers "how much of what the session changed can I undo?", so it divides by
+  // every change, shell-borne ones included. Using c.ratio here printed a full bar labelled
+  // 100% on a session where the verdict below it said 0 of 238 changes are reversible.
+  const denom=(c.totalChanges??(c.edits+c.shellMutations));
+  const pct=Math.round((c.reversibleRatio??c.ratio)*100);
+  // The prose above is a verdict; cov-nums prints the three counts it came from, so a
+  // reader (or the README) never has to trust a claim they cannot check.
   hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可撤回":c.verdict==="partial"?"部分可撤回":c.verdict==="diff-only"?"仅 diff":"无编辑")+
-    ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div></div>';
+    ' · 可撤回 <b>'+pct+'%</b>（'+kb(c.withBefore??0)+' / '+kb(denom)+' 处改动）<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
+    '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'" data-before-log="'+c.withBeforeLog+'" data-before-backup="'+c.withBeforeBackup+'" data-backups="'+c.backups+'">'+
+    '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b>'+
+    (c.withBeforeBackup>0 ? '（日志内联 <b>'+c.withBeforeLog+'</b> + 备份还原 <b>'+c.withBeforeBackup+'</b>）' : '')+
+    (c.backups===0 && c.edits>0 ? ' · 本机无该会话 file-history 备份' : '')+
+    (c.missing>0 ? ' · 仍缺 <b>'+c.missing+'</b>' : '')+'</div></div>';
+  if(D.postmortem&&D.postmortem.length){
+    const PMK={loop:'死循环','repeated-edit':'反复改同一处','near-full-context':'上下文压力'};
+    // A long session can produce a dozen findings of one kind. Printing a bare
+    // count leaves the reader to count rows; printing the shape first lets them
+    // see "12 loops, 1 file churn" and decide where to look.
+    const tally={};
+    for(const f of D.postmortem) tally[f.kind]=(tally[f.kind]||0)+1;
+    const shape=Object.keys(PMK).filter(k=>tally[k]).map(k=>PMK[k]+' '+tally[k]).join(' · ');
+    hh+='<div class="pm"><b>自动检查</b> · '+D.postmortem.length+' 项发现<div class="pm-shape">'+esc(shape)+'</div><div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
+    for(const f of D.postmortem){
+      hh+='<div class="pm-row" data-i="'+f.firstStep+'" title="'+esc(f.evidence.join(' / '))+'"><span class="tag">'+esc(PMK[f.kind]||f.kind)+'</span><span>'+esc(f.headline)+'</span><span class="pm-step">第 '+(f.firstStep+1)+' 步</span></div>';
+    }
+    hh+='</div>';
+  } else {
+    hh+='<div class="pm"><b>自动检查</b> · 未发现<div class="pm-clean">日志里没有同参连调、没有反复改同一处、没有上下文压力。</div></div>';
+  }
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+
     (D.parseErrorCount>5?" 等 "+D.parseErrorCount+" 行":"")+'。原始行号已记录，可用 midflight doctor 查看完整原因。</div>';
-  h.innerHTML=hh; return h;
+  h.innerHTML=hh;
+  // Wired here, not on the global step list: these rows live in the header, and a
+  // panel that renders findings nobody can reach is decoration.
+  for(const r of h.querySelectorAll('.pm-row')){
+    r.addEventListener('click',()=>{ const i=+r.getAttribute('data-i'); if(i>=0) select(i); });
+  }
+  return h;
 }
 
 document.body.appendChild(header());

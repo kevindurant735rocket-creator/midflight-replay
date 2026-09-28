@@ -139,12 +139,14 @@ open replay.html
 ## Don't take our word for it — open one
 
 Three real outputs are committed to this repo. Click, no install, no download,
-no account. Every one is a single file with zero external references.
+no account. Every one is a single file with zero external references, regenerated from
+the fixtures in this repo by `bash scripts/demo-samples.sh` and checked byte-for-byte in
+CI — a sample that has drifted from the code is a bug, not a screenshot.
 
 | | what you get | open it |
 |---|---|---|
-| **Interactive replay** — a Codex session | scrub the timeline, click any step, read the diff | [open](docs/demo-codex.html) · 25 KB |
-| **Interactive replay** — a Claude Code session | the one with compaction sawtooth events | [open](docs/demo-claude.html) · 47 KB |
+| **Interactive replay** — a Codex session | scrub the timeline, click any step, read the diff | [open](docs/demo-codex.html) · 33 KB |
+| **Interactive replay** — a Claude Code session | the one with compaction sawtooth events | [open](docs/demo-claude.html) · 56 KB |
 | **PR digest** — GitHub-safe | what you actually paste into a review comment | [open](docs/demo-claude-paste.html) · 1 KB |
 
 The third one is the point of the project. GitHub strips `<script>` and
