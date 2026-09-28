@@ -8,6 +8,7 @@
   <a href="#install"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
   <a href="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml"><img src="https://github.com/kevindurant735rocket-creator/midflight-replay/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
+  <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay" alt="npm 0.1.2"></a>
 </p>
 
 <p align="center">
@@ -33,10 +34,9 @@ npx github:kevindurant735rocket-creator/midflight-replay agents --probe
 
 Everything runs on your own machine. No network calls, no telemetry, no database, and the
 tool ships zero runtime dependencies &mdash; redaction of paths, keys and emails is on by
-default. <sub>Requires Node 20+. There is deliberately no <code>npm</code> badge here yet: the
-package is not published, and a badge pointing at a 404 is a worse first impression than
-no badge. Once it is, this becomes <code>npx midflight-replay</code> and the badge comes
-back with it.</sub>
+default. <sub>Requires Node 20+. It is on npm as <code>midflight-replay</code>, so
+<code>npx midflight-replay</code> works without cloning anything; the <code>github:</code> form
+above pins the command to this repository instead.</sub>
 
 
 <p align="center">

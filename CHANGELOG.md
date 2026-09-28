@@ -8,6 +8,16 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **It is on npm.** `midflight-replay@0.1.2` is published, so `npx midflight-replay` runs without
+  cloning anything. The check was made against the registry rather than against a local build:
+  `npm view midflight-replay version` reads `0.1.2` back off `registry.npmjs.org`, the published
+  tarball carries both binary names and no runtime dependencies, and `npx midflight-replay@0.1.2
+  replay` on a real session log from this machine wrote a 0.57 MiB report from 655 steps in 45 ms.
+  The README's first screen carries the npm badge and no longer carries the note about why it had
+  none. Getting the upload through was the last real obstacle: the account has no second factor, so
+  the session token `npm login` hands out is refused with `403 ... bypass 2fa enabled is required`,
+  and a granular token has to carry that flag itself.
+
 - **CI on the repository's own pushes and pull requests.** `.github/workflows/ci.yml` runs
   `scripts/ci-checks.sh` on Node 20 and 22, plus a second runner with a real browser for the
   report checks; `.github/workflows/self-replay.yml` points the tool at this repository's own
