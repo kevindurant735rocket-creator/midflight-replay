@@ -27,9 +27,32 @@
   "QA",
   "SRE"
  ],
- "goal_id": null,
+ "goal_id": "active",
  "created": "2026-09-28 19:12:44",
- "updated": "2026-09-28 19:12:44",
- "rounds": [],
- "state": "GOAL_SET"
+ "updated": "2026-09-28 19:14:12",
+ "rounds": [
+  {
+   "n": 2,
+   "giga_run": "midflight-r2",
+   "depts": [
+    "PMO",
+    "ARCH",
+    "UX",
+    "DEV",
+    "QA",
+    "SRE"
+   ],
+   "agent_map": {
+    "PMO": "A-PMO",
+    "ARCH": "A-ARCH",
+    "UX": "A-UX",
+    "DEV": "A-DEV",
+    "QA": "A-QA",
+    "SRE": "A-SRE"
+   },
+   "state": "OPEN",
+   "opened": "2026-09-28 19:14:12"
+  }
+ ],
+ "state": "ROUND_OPEN"
 }

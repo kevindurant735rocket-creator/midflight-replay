@@ -353,11 +353,11 @@ const human = (n: number): string => {
 export function formatAgentTable(reports: AgentReport[]): string {
   const pad = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s.padEnd(n));
   const lines: string[] = [];
-  lines.push('agent                 status       sessions   size        newest');
-  lines.push('--------------------  -----------  ---------  ----------  -----------------');
+  lines.push('agent                 status         sessions   size        newest');
+  lines.push('--------------------  -------------  ---------  ----------  -----------------');
   for (const r of reports) {
     if (r.status === 'absent') {
-      lines.push(`${pad(r.label, 20)}  ${pad('not installed', 11)}  ${pad('-', 9)}  ${pad('-', 10)}  -`);
+      lines.push(`${pad(r.label, 20)}  ${pad('not installed', 13)}  ${pad('-', 9)}  ${pad('-', 10)}  -`);
       continue;
     }
     const st =
@@ -370,7 +370,7 @@ export function formatAgentTable(reports: AgentReport[]): string {
             : 'no adapter';
     const when = r.newest ? new Date(r.newestMtime).toISOString().slice(0, 10) : '-';
     lines.push(
-      `${pad(r.label, 20)}  ${pad(st, 11)}  ${pad(String(r.files), 9)}  ${pad(human(r.bytes), 10)}  ${when}`,
+      `${pad(r.label, 20)}  ${pad(st, 13)}  ${pad(String(r.files), 9)}  ${pad(human(r.bytes), 10)}  ${when}`,
     );
   }
   const readable = reports.filter((r) => r.status === 'supported');

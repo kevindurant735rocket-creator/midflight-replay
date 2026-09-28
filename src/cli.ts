@@ -13,38 +13,43 @@ import { postmortem, renderPostmortem } from './postmortem.js';
 import { scanAgents, formatAgentTable } from './agents.js';
 import { installSkill, presentTargets, TARGETS, SKILL_NAME, type InstallTarget } from './install.js';
 
-const USAGE = `midflight — forensic replay for AI coding agents
+const USAGE = `midflight — 把 AI 智能体跑完的一次会话，变成一个能来回拖动的网页
 
-Usage
-  midflight replay <session.jsonl> [options]   build a self-contained replay
-  midflight doctor <session.jsonl> [--json]    parse a session and report health; exit 1 on bad input
-  midflight stats  <session.jsonl> [--json]    parse and print step counts
-  midflight postmortem <session.jsonl> [--json] flag loops, repeated edits, and context pressure
-  midflight revert  <report.html> --step <n> [--out patch.diff]
-  midflight revert  <report.html> --list        show which steps are reversible
-                                                prints a reverse-appliable patch; never
-                                                writes the working tree
-  midflight agents [--json] [--probe]          which agents are installed here and which are readable
-  midflight install <agent>|--all [--dry-run]  write the midflight skill into that agent
-  midflight redact                            run the redactor over stdin
-  midflight --version                          print the installed version
-  midflight help
+先试这一条（读你机器上最近的一次 Codex 会话，生成 replay.html）
+  midflight replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
 
-Agents / install options
-  --probe         parse the newest log of every readable agent (slower, proves it works)
-  --all           every known agent host, not just the ones present on this machine
-  --dry-run       print the target paths and write nothing
-  --force         replace a different file that is already at the target path
+  不确定自己有哪些会话日志？先问一句
+  midflight agents --probe
 
-Replay options
-  --out <file>        write the HTML here (default: stdout)
-  --paste             emit the GitHub-safe digest block instead of the interactive report
-  --max-steps <n>     max steps to embed (default 3000; tool calls and compaction events are never dropped)
-  --per-step-chars <n>  max chars kept per step payload (default 1200)
-  --no-redact         disable redaction (redaction is ON by default)
-  --json              machine-readable summary on stderr
+用法
+  midflight replay <会话文件>            生成一个自带全部内容的网页，可以直接拖动回看
+  midflight doctor <会话文件>            检查这个日志能不能读，坏在哪一行（有问题时退出码 1）
+  midflight stats  <会话文件>            只数一数：这个会话一共多少步、都是些什么步骤
+  midflight postmortem <会话文件>        找问题：反复改同一个文件、绕圈、上下文快满了
+  midflight revert  <report.html> --list  看看这个报告里哪几步可以撤回
+  midflight revert  <report.html> --step <n>  打印出反向补丁；永远不碰你的工作区
+  midflight agents [--json] [--probe]    本机装了哪些智能体、哪些日志读得动
+  midflight install <名字>|--all          把 midflight 的用法装进那个智能体
+  midflight redact                       从标准输入里过一遍脱敏（路径/密钥/邮箱）
+  midflight --version                    打印版本号
+  midflight help                         打印这段说明
 
-Everything runs locally. No network, no telemetry, no database, no dependencies.
+装到智能体里的选项
+  --probe         把每个读得动的智能体的最新日志都真解析一遍（慢一点，但能证明真的能用）
+  --all           列出所有认识的智能体，不管你这台机器上有没有装
+  --dry-run       只打印会写到哪里，不动任何文件
+  --force         目标位置已经有别的文件时，先问过再覆盖
+
+replay 的选项
+  --out <文件>        写到哪个文件（默认直接打印到屏幕）
+  --paste             不生成网页，改成一段可以贴进 PR 的纯文本
+  --max-steps <n>     最多放多少步进去（默认 3000；工具调用和上下文压缩事件永不丢）
+  --per-step-chars <n>  每步最多留多少字（默认 1200）
+  --no-redact         关闭脱敏（默认是开的）
+  --json              顺便在 stderr 打一份机器能读的汇总
+
+全部在你自己的机器上跑：不联网、不上报、不建数据库、不装任何依赖。
+日志里没被读懂的部分会直接告诉你第几行，不猜、不编。
 `;
 
 async function cmdAgents(json: boolean, probe: boolean, all: boolean): Promise<number> {
@@ -179,7 +184,8 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
   else {
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${path}`);
     console.log(`  adapter=${payload.adapter} agent=${payload.agent} lines=${payload.lines} steps=${payload.steps} (${st.durationMs}ms, ${(bytes / 1048576).toFixed(1)} MiB)`);
-    console.log(`  byKind=${JSON.stringify(st.byKind)}`);
+    const kinds = Object.entries(st.byKind).sort((a, b) => b[1] - a[1]);
+    console.log(`  steps by kind: ${kinds.map(([k, v]) => `${k} ${v}`).join('  ')}`);
     if (payload.parseErrorCount) {
       console.log(`  ${payload.parseErrorCount} bad line(s); first:`);
       for (const e of session.parseErrors.slice(0, 5)) console.log(`    line ${e.line}: ${e.error}`);
