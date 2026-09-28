@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,4 +56,24 @@ describe('every link a reader can click resolves — in a clone, not just on thi
     expect(r.status).toBe(1);
     expect(`${r.stdout}${r.stderr}`).toMatch(/BROKEN anchor/);
   });
+});
+
+/**
+ * The demo is the whole pitch. A visitor decides in about two seconds, and both READMEs
+ * used to open with a wall of prose that pushed the 16-second GIF off the first screen.
+ * Nothing in the build would have noticed: the links were fine, the commands were fine, the
+ * file was just arranged against itself. This asserts position, not existence, so moving
+ * the picture back down fails the run.
+ */
+describe('demo sits above the fold', () => {
+  for (const file of ['README.md', 'README.zh-CN.md']) {
+    it(`${file} shows the replay before the first section heading`, () => {
+      const text = readFileSync(join(repoRoot, file), 'utf8');
+      const demo = text.indexOf('docs/demo/demo.gif');
+      const firstHeading = text.search(/^## /m);
+      expect(demo).toBeGreaterThan(-1);
+      expect(firstHeading).toBeGreaterThan(-1);
+      expect(demo).toBeLessThan(firstHeading);
+    });
+  }
 });

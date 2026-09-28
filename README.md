@@ -18,27 +18,6 @@
   what you do with it after that is your call.</sub>
 </p>
 
-## Run it on your own session &mdash; one command, nothing to clone
-
-```bash
-npx github:kevindurant735rocket-creator/midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
-```
-
-That reads the most recent Codex session off this machine and writes one self-contained
-`replay.html` you can open or attach to a pull request. On Claude Code, point it at
-`~/.claude/projects/*/*.jsonl` instead. Not sure which logs you have? Ask:
-
-```bash
-npx github:kevindurant735rocket-creator/midflight-replay agents --probe
-```
-
-Everything runs on your own machine. No network calls, no telemetry, no database, and the
-tool ships zero runtime dependencies &mdash; redaction of paths, keys and emails is on by
-default. <sub>Requires Node 20+. It is on npm as <code>midflight-replay</code>, so
-<code>npx midflight-replay</code> works without cloning anything; the <code>github:</code> form
-above pins the command to this repository instead.</sub>
-
-
 <p align="center">
   <a href="#see-it-move">16s replay</a> ·
   <a href="#install">install</a> ·
@@ -69,6 +48,26 @@ above pins the command to this repository instead.</sub>
 <p align="center"><sub>A real Codex session from this machine &mdash; 109 MiB of raw JSONL, 14,906 parsed steps &mdash; turned into a 3.4 MiB single file in <strong>0.46 s</strong>. The code in the picture is the actual session log, not a mock.</sub></p>
 
 ---
+
+## Run it on your own session &mdash; one command, nothing to clone
+
+```bash
+npx github:kevindurant735rocket-creator/midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
+```
+
+That reads the most recent Codex session off this machine and writes one self-contained
+`replay.html` you can open or attach to a pull request. On Claude Code, point it at
+`~/.claude/projects/*/*.jsonl` instead. Not sure which logs you have? Ask:
+
+```bash
+npx github:kevindurant735rocket-creator/midflight-replay agents --probe
+```
+
+Everything runs on your own machine. No network calls, no telemetry, no database, and the
+tool ships zero runtime dependencies &mdash; redaction of paths, keys and emails is on by
+default. <sub>Requires Node 20+. It is on npm as <code>midflight-replay</code>, so
+<code>npx midflight-replay</code> works without cloning anything; the <code>github:</code> form
+above pins the command to this repository instead.</sub>
 
 ## Sixty seconds, start to finish
 
