@@ -294,3 +294,43 @@ describe('postmortem — a loop label is never raw JSON', () => {
     expect(ev).toContain('ps aux | grep x');
   });
 });
+
+describe('postmortem — arguments that arrive as raw JSON text', () => {
+  // This is the shape Claude Code actually writes. Every helper above builds
+  // OBJECT args, so the string path shipped untested: on a real 428-step Claude
+  // session the repeated-edit detector saw 0 of 36 Edit calls and the report
+  // cleared a file that was being rewritten 13 times in a row.
+  function editText(path: string): ReplayStep {
+    const raw = JSON.stringify({ replace_all: false, file_path: path });
+    return {
+      kind: 'tool_call',
+      ts: seq++,
+      callId: `c${seq}`,
+      name: 'Edit',
+      args: raw as unknown as Record<string, unknown>,
+      rawArgs: raw,
+    } as ReplayStep;
+  }
+
+  it('counts a file rewritten REPEAT_EDIT_MIN times when the args are text', () => {
+    seq = 0;
+    const steps = [editText('/repo/a.py'), editText('/repo/a.py'), editText('/repo/a.py')];
+    const found = postmortem(steps).filter((f) => f.kind === 'repeated-edit');
+    expect(found).toHaveLength(1);
+    expect(found[0].headline).toContain('a.py');
+    expect(found[0].evidence.length).toBeGreaterThan(0);
+  });
+
+  it('stays silent under the bar with text args too', () => {
+    seq = 0;
+    const steps = [editText('/repo/a.py'), editText('/repo/a.py')];
+    expect(steps.length).toBe(REPEAT_EDIT_MIN - 1);
+    expect(postmortem(steps).filter((f) => f.kind === 'repeated-edit')).toHaveLength(0);
+  });
+
+  it('reads the same file out of a string and an object call', () => {
+    seq = 0;
+    const mixed = [editText('/repo/b.py'), edit('/repo/b.py'), editText('/repo/b.py')];
+    expect(postmortem(mixed).filter((f) => f.kind === 'repeated-edit')).toHaveLength(1);
+  });
+});

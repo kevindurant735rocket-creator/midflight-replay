@@ -8,6 +8,23 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The postmortem check was blind on Claude Code, and told users the session was clean.**
+  Tool arguments reach the detectors in two shapes: Codex hands them over already parsed,
+  Claude Code hands them over as a raw JSON string. Only the parsed form was read, so on a
+  real 428-step Claude session (36 `Edit` calls, every one of them a JSON string) the
+  repeated-edit detector saw none of them and the report printed "没有反复改同一处" while
+  `backend/collectors/deepseek_harness.py` was being rewritten 13 times in the same session.
+  Both shapes now go through one helper, and the same file rewritten `REPEAT_EDIT_MIN` times
+  is reported with the file name, the count and the step it starts at. That session now reads
+  "自动检查 · 2 项发现" instead of an all-clear.
+
+- **Four header fields rendered as a bare `—`.** `模型` / `effort` / `分支` / `上下文窗口` are
+  whatever the host happened to record, and a Claude Code log records none of them — so the
+  report printed a row of dashes that reads like a template that failed to fill in. Unknown
+  facts now say "日志没记" in plain words. Nothing is inferred to fill them: a value the log
+  does not carry is not printed, which is the same rule the before-image coverage already
+  follows.
+
 - **The samples a visitor is told to open had drifted from the code.** `docs/demo-codex.html`
   and `docs/demo-claude.html` were generated once, by hand, and never again — so they still
   served a UI from before the postmortem panel existed. All three committed outputs are now

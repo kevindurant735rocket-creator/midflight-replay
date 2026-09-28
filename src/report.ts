@@ -117,6 +117,7 @@ h1{font-size:15px;margin:0 0 6px;letter-spacing:.2px}
 h1 small{color:var(--dim);font-weight:400;margin-left:8px}
 .meta{color:var(--dim);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px}
 .meta b{color:var(--fg);font-weight:600}
+.meta .unk{color:var(--dim);font-style:normal;opacity:.75}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .badge{font-size:11px;padding:2px 8px;border:1px solid var(--line);border-radius:10px;color:var(--dim)}
 .badge.ok{border-color:#1f6f43;color:#3fb950}
@@ -433,11 +434,17 @@ document.addEventListener("keydown",e=>{
 function header(){
   const m=D.meta, c=D.coverage;
   const h=el("header");
-  const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
-    ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow)+" token":"—"],
+  const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model],["effort",m.effort],
+    ["版本",m.cliVersion],["分支",m.gitBranch],["上下文窗口",m.contextWindow?kb(m.contextWindow)+" token":null],
     ["来源",D.sourceLabel]];
   let hh='<h1>midflight <small>agent 会话回放 · 自动检查</small></h1><div class="meta">';
-  for(const [k,v] of metas) hh+='<span>'+esc(k)+' <b>'+esc(String(v))+'</b></span>';
+  // A row of bare em-dashes reads as a template that failed to fill in, which is
+  // exactly the impression a Claude Code log used to leave: four of the six
+  // fields. Hosts differ in what they record, so say which one left it out
+  // instead of printing a placeholder the reader has to interpret.
+  for(const [k,v] of metas) hh+=(v===null||v===undefined||v==='')
+    ? '<span>'+esc(k)+' <i class="unk">日志没记</i></span>'
+    : '<span>'+esc(k)+' <b>'+esc(String(v))+'</b></span>';
   hh+='</div>';
   hh+='<div class="badges">'+
     '<span class="badge ok">✓ 不写工作区</span><span class="badge ok">✓ 不引 git</span><span class="badge ok">✓ 不伪造快照</span>'+

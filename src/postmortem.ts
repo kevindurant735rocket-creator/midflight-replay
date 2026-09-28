@@ -39,13 +39,38 @@ export interface Finding {
 
 const MUTATING = /^(edit|write|multiedit|notebookedit|apply_patch|str_replace|create|update)/i;
 
+/**
+ * Tool arguments as an object, whichever form the host handed them over in.
+ *
+ * This is not a cosmetic detail. Measured on a real 428-step Claude Code
+ * session: 36 `Edit` calls, every one of them carrying its arguments as a raw
+ * JSON *string*, and a detector that only reads the object form therefore saw
+ * zero of them — the report told the reader "没有反复改同一处" while a single
+ * file was being rewritten 25 times. Codex stores the same field already
+ * parsed, so a detector that reads only one of the two forms is structurally
+ * blind on half the hosts this project claims to support.
+ */
+function argsOf(step: ReplayStep): Record<string, unknown> | null {
+  const a: unknown = step.kind === 'tool_call' ? step.args : null;
+  if (a && typeof a === 'object') return a as Record<string, unknown>;
+  if (typeof a === 'string') {
+    try {
+      const parsed = JSON.parse(a);
+      if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /** The path an edit step touched, or null when the step is not an edit. */
 function editPath(step: ReplayStep): string | null {
   if (step.kind === 'file_event') return step.op === 'delete' ? null : step.path;
   if (step.kind !== 'tool_call') return null;
   if (!MUTATING.test(step.name)) return null;
-  const a = step.args as Record<string, unknown> | null;
-  if (!a || typeof a !== 'object') return null;
+  const a = argsOf(step);
+  if (!a) return null;
   for (const k of ['file_path', 'path', 'filePath', 'notebook_path']) {
     const v = a[k];
     if (typeof v === 'string' && v) return v;
@@ -70,21 +95,10 @@ function callFingerprint(step: ReplayStep): string | null {
  */
 function callLabel(step: ReplayStep): string {
   if (step.kind !== 'tool_call') return '';
-  // Codex hands `args` over as the raw JSON *text*; Claude Code hands over an
-  // object. Reading only the object form is how every codex loop came out
-  // labelled `exec_command「{"cmd":"…"}」` — a reader has to parse JSON to learn
-  // which command repeated, which is the one job this label exists to avoid.
-  let a: Record<string, unknown> | null = null;
-  if (step.args && typeof step.args === 'object') {
-    a = step.args as Record<string, unknown>;
-  } else if (typeof step.args === 'string') {
-    try {
-      const parsed = JSON.parse(step.args);
-      if (parsed && typeof parsed === 'object') a = parsed as Record<string, unknown>;
-    } catch {
-      a = null;
-    }
-  }
+  // Both argument shapes reach this function, so the label is read through the
+  // same helper the detectors use. A reader must never have to parse raw JSON to
+  // learn which call repeated — that is the one job this label exists to do.
+  const a = argsOf(step);
   const keys = ['cmd', 'command', 'file_path', 'filePath', 'path', 'notebook_path', 'pattern', 'query', 'url'];
   let detail = '';
   if (a) {

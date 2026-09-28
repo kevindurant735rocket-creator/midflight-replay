@@ -69,6 +69,19 @@ for (const f of files) {
     ok('clicking a finding jumps to its step', (await cur()) === want, `cur=${await cur()} want=${want}`);
   }
 
+  // ---- header facts ----
+  // Six fields, and hosts differ in how many of them they record. A bare em-dash
+  // in that row reads as a template that failed to fill in, which is the exact
+  // impression a Claude Code log used to leave on four fields at once.
+  // A real value can be any string, so the two shapes that mean "nothing here"
+  // are compared literally: a bare em-dash, or nothing at all after the key.
+  const bareMeta = await page.evaluate(() =>
+    [...document.querySelectorAll('.meta span')]
+      .map((e) => e.innerText.trim().replace(/\s+/g, ' '))
+      .filter((t) => t.endsWith('\u2014') || t.split(' ').filter(Boolean).length < 2),
+  );
+  ok('header prints no bare placeholder', bareMeta.length === 0, bareMeta.join(' | ').slice(0, 160));
+
   // ---- keyboard scrub ----
   // A one-step report cannot advance: the windsurf adapter emits exactly one note
   // ("unreadable, and here is why"), so "ArrowRight advances" has no correct answer

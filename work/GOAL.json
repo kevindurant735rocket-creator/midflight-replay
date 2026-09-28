@@ -29,7 +29,7 @@
  ],
  "goal_id": "active",
  "created": "2026-09-28 19:12:44",
- "updated": "2026-09-28 19:17:47",
+ "updated": "2026-09-28 21:12:42",
  "rounds": [
   {
    "n": 2,
@@ -56,6 +56,33 @@
    "evidence": "bash scripts/acceptance.sh EXIT=0 ALL-AC-OK(AC1-AC10); 195 passed/0 failed; pre-push CI-CHECKS-OK; 三闸门 FAST-GATE-OK DEAI-OK BLOAT-OK; git push 5e43e57",
    "verdict": "CONTINUE",
    "closed": "2026-09-28 19:17:47",
+   "zero_delta_streak": 0
+  },
+  {
+   "n": 3,
+   "giga_run": "midflight-r3",
+   "depts": [
+    "PMO",
+    "ARCH",
+    "UX",
+    "DEV",
+    "QA",
+    "SRE"
+   ],
+   "agent_map": {
+    "PMO": "A-PMO",
+    "ARCH": "A-ARCH",
+    "UX": "A-UX",
+    "DEV": "A-DEV",
+    "QA": "A-QA",
+    "SRE": "A-SRE"
+   },
+   "state": "CLOSED",
+   "opened": "2026-09-28 21:12:36",
+   "delta": "访客信任面三处真实缺陷：README 中英双份假声明（声称本仓跑 action、workflow 文件其实 404）+ 404 的 npm 徽章；link-check 只验'文件存在'不验'进 git'且漏掉首屏全部 HTML；docs/demo-*.html 三个访客样例比代码旧、缺 postmortem 面板。已改为如实陈述、闸门升级（进 git 校验 + HTML/srcset/页内锚点 + 忽略代码块 + 3 条回归含必红负例）、样例由 scripts/demo-samples.sh 确定性重建并逐字节进 CI/测试，两个交互样例接进真实浏览器闸门",
+   "evidence": "npx vitest run rc=0 215 passed | bash scripts/acceptance.sh rc=0 ALL-AC-OK | node scripts/browser-check.mjs docs/demo-codex.html docs/demo-claude.html rc=0 68 passed 0 failed | bash scripts/demo-samples.sh rc=0 DEMO-SAMPLES-OK | npm run check:links rc=0 LINK-CHECK-OK checked=53 | 三闸门 rc=0 FAST-GATE-OK/DEAI-OK/BLOAT-OK | git push rc=0 CI-CHECKS-OK",
+   "verdict": "CONTINUE",
+   "closed": "2026-09-28 21:12:42",
    "zero_delta_streak": 0
   }
  ],
