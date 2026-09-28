@@ -16,6 +16,28 @@ run air-gapped, and trusted with a session log full of secrets.
 If a change seems to require breaking one of these, open an issue first and argue it
 there, in the open, with measurements.
 
+## Test it against a real session, not just a fixture
+
+`npm test` runs 135 tests over the fixtures in `fixtures/`. Those prove the parser
+handles the cases somebody thought to write down. They did not catch the bug that
+mattered most: `node:readline` breaks on `U+2028`/`U+2029`, which RFC 8259 allows
+unescaped inside a JSON string, so real rollouts carrying a pasted document were being
+cut apart and reported as corrupt. Every test stayed green. Three real sessions on one
+machine were not — 88 parse errors between them.
+
+So the fixtures are not the acceptance test. This is:
+
+```bash
+npm run build && npm run smoke:real
+# REAL-LOG-OK n=886 codex=713 claude-code=173 steps=136104 bytes=0.67GB
+```
+
+It parses every Claude Code and Codex session on the machine and fails if any of them
+mis-parses. It prints `REAL-LOG-SKIP` and exits 0 when there are none, so a machine
+without agent logs never gets a red gate for it. `--limit 40` keeps it to the largest
+rollouts for a fast CI run. If you touch the parser, run it — and if it finds something,
+that is a bug in the tool, not in your logs.
+
 ## Getting set up
 
 ```bash

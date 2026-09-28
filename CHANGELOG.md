@@ -6,6 +6,17 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`npm run smoke:real` — the parser checked against every real session on the machine.**
+  Aimed at the gap the fix below exposed: 135 fixture tests were green while three real
+  sessions were silently mis-parsed. It walks `~/.claude/projects` and `~/.codex/sessions`,
+  parses everything it finds, and fails on the first mis-parse. `REAL-LOG-SKIP` (exit 0)
+  when the machine has no agent logs. `npm run smoke:real:ci` caps it at the 40 largest
+  rollouts for CI. It is wired into `.github/workflows/ci.yml`, and it was falsified
+  before it was trusted: against the pre-fix parser it reports
+  `REAL-LOG-FAIL: 3 of 886`, against the fixed one `REAL-LOG-OK n=886`.
+
 ### Fixed
 
 - **A valid Codex rollout was reported as corrupt.** `node:readline` — the line reader
