@@ -226,7 +226,7 @@ midflight 读的是 agent 本来就在写的 JSONL。它不要求你打开任何
 
 ```bash
 # 最新的 Codex 会话
-npx midflight-replay replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
 
 # 最新的 Claude Code 会话
 npx midflight-replay replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html

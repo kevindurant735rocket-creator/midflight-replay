@@ -19,6 +19,20 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   `README-CMDS-OK n=12`; negative-tested by breaking one command, which drops it to
   `README-CMDS-FAIL 11/12` and exit 1.
 
+  The gate skips, loudly, what a given machine cannot answer: a box with no agent
+  logs and no installed host reports `README-CMDS-OK n=6` plus a skip count rather
+  than a red publish. It still fails when a glob matches nothing while the store
+  exists — that is the failure mode a hardcoded date produces.
+
+### Fixed
+
+- **README no longer asks for a session log from a fixed date.**
+  `$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)` was the copy-paste line
+  in both READMEs. It worked on the machine that wrote it and would have failed for
+  every visitor afterwards. It is now `~/.codex/sessions/*/*/*/*.jsonl`, which
+  matches the layout Codex actually uses. Found by the new README gate, not by
+  reading the README.
+
 ### Fixed
 
 - **`scripts/verify-tarball.sh` no longer trusts a hand-kept command list.**

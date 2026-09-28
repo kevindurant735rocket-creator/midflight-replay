@@ -254,7 +254,7 @@ anything, and it never touches your workspace.
 
 ```bash
 # newest Codex session
-npx midflight-replay replay "$(ls -t ~/.codex/sessions/2026/09/27/*.jsonl | head -1)" --out replay.html
+npx midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
 
 # newest Claude Code session
 npx midflight-replay replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html

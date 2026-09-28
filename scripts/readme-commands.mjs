@@ -84,6 +84,9 @@ function expandGlob(pattern) {
   return null;
 }
 
+const HOST_STORES = ['.codex', '.claude', '.config/opencode', '.gemini', '.cursor', '.codeium', '.github'];
+const ANY_HOST_STORE = HOST_STORES.some((d) => existsSync(join(homedir(), d)));
+const SKIP = '\u0000no-agent-logs\u0000'; // sentinel: string-safe, survives later replaces
 const CODEX_REAL = firstSessionUnder(CODEX_SESSIONS);
 const CLAUDE_REAL = firstSessionUnder(CLAUDE_PROJECTS);
 
@@ -108,12 +111,24 @@ function rewrite(line, tmp) {
   cmd = cmd.replace(/^npx\s+midflight-replay\s+/, `${CLI} `).replace(/^midflight\s+/, `${CLI} `);
 
   // never write into the operator's real agent config from a README check
-  if (/\binstall\b/.test(cmd) && !/\s--dry-run(\s|$)/.test(cmd)) cmd += ' --dry-run';
+  if (/\binstall\b/.test(cmd)) {
+    // `midflight install` with no target resolves against the hosts present on
+    // this machine, so on a box with no agent installed it has nothing to do and
+    // exits non-zero. That is the machine, not a broken README line.
+    if (!ANY_HOST_STORE) return SKIP;
+    if (!/\s--dry-run(\s|$)/.test(cmd)) cmd += ' --dry-run';
+  }
 
   // `$(ls -t <glob> | head -1)` — keep the documented shape, feed a real path
   cmd = cmd.replace(/\$\(ls -t\s+(\S+)\s*\|\s*head\s+-?1\)/g, (_, glob) => {
     const hit = expandGlob(glob.replace(/^~(?=\/)/, homedir()));
-    if (!hit) throw new Error(`glob in README matched no real session file: ${glob}`);
+    if (!hit) {
+      // No agent logs on this machine is a skip (CI, a fresh laptop), not a
+      // broken README. A glob that matched nothing while the store exists IS
+      // rot -- usually a hardcoded date -- so that still fails.
+      if (!existsSync(CODEX_SESSIONS) && !existsSync(CLAUDE_PROJECTS)) return SKIP;
+      throw new Error(`glob in README matched no real session file: ${glob}`);
+    }
     return hit;
   });
 
@@ -124,7 +139,10 @@ function rewrite(line, tmp) {
   cmd = cmd.replace(/"?\$HOME"?\/(\.claude\/projects|\.codex\/sessions)\/\S*?\*\S*?\.jsonl/g, (m) => {
     const rel = m.replace(/^"?\$HOME"?\//, '').replace(/"/g, '');
     const hit = expandGlob(join(homedir(), rel));
-    if (!hit) throw new Error(`glob in README matched no real session file: ${rel}`);
+    if (!hit) {
+      if (!existsSync(CODEX_SESSIONS) && !existsSync(CLAUDE_PROJECTS)) return SKIP;
+      throw new Error(`glob in README matched no real session file: ${rel}`);
+    }
     return hit;
   });
   // bare placeholders
@@ -158,6 +176,7 @@ if (commands.length === 0) {
 const tmp = mkdtempSync(join(tmpdir(), 'midflight-readme-'));
 const failures = [];
 let ran = 0;
+let skipped = 0;
 try {
   for (const raw of commands) {
     let cmd;
@@ -165,6 +184,10 @@ try {
       cmd = rewrite(raw, tmp);
     } catch (err) {
       failures.push({ raw, why: `rewrite: ${err.message}` });
+      continue;
+    }
+    if (cmd.includes(SKIP)) {
+      skipped++;
       continue;
     }
     try {
@@ -184,6 +207,7 @@ for (const f of failures) {
   if (f.cmd) console.error(`  as: ${f.cmd}`);
   console.error(`  rc: ${f.why}`);
 }
+if (skipped) console.log(`  (${skipped} command(s) skipped: no agent logs on this machine)`);
 if (failures.length) {
   console.error(`README-CMDS-FAIL ${ran}/${commands.length} README commands run clean`);
   process.exit(1);
