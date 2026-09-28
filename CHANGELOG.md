@@ -6,6 +6,13 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`revert --list` no longer prints a padded internal enum.** The source column read
+  `[log         ]` / `[file-history]` — machine padding in the one screen where a user
+  decides which edit to undo. Both sources now use the Chinese words already settled
+  elsewhere in this codebase, and the success line says `来源：` instead of `source=log`.
+
 ## [0.1.2] - 2026-09-28
 
 ### Added

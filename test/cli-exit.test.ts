@@ -66,3 +66,51 @@ describe('replay exit code tells success from an unreadable file', () => {
     expect(r.stderr).toMatch(/行读不懂/);
   });
 });
+
+/**
+ * `revert --list` printed its source column as a bracketed internal enum padded
+ * to twelve characters: `[log         ]`, `[file-history]`. On a real Claude
+ * session the list is the screen the user stares at to decide which edit to undo,
+ * and a padded enum plus a bracket pair is exactly the machine smell the rest of
+ * the CLI avoids. The two real sources already have decided Chinese names in this
+ * codebase (`日志内联`, `备份还原`); the list now uses them, and the success line
+ * says `来源：` instead of `source=log`.
+ */
+describe('revert --list speaks the reader\'s language', () => {
+  let dir: string;
+  const run = (args: string[]) =>
+    spawnSync(process.execPath, ['dist/cli.js', 'revert', ...args], { encoding: 'utf8' });
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'mf-revert-list-'));
+    writeFileSync(join(dir, 'a.ts'), 'n', 'utf8');
+    const steps = [
+      { kind: 'tool_call', ts: 1, name: 'Edit', rawArgs: JSON.stringify({ file_path: join(dir, 'a.ts'), old_string: 'o', new_string: 'n' }), newText: 'n' },
+      { kind: 'tool_call', ts: 2, name: 'Edit', rawArgs: JSON.stringify({ file_path: '/repo/b.ts' }), beforeImage: 'x\n' },
+    ];
+    writeFileSync(
+      join(dir, 'r.html'),
+      `<html><script>const D = ${JSON.stringify({ meta: { cwd: dir }, steps })};</script></html>`,
+      'utf8',
+    );
+  });
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('names both sources in Chinese and drops the padded bracket', () => {
+    const r = run([join(dir, 'r.html'), '--list']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('日志内联');
+    expect(r.stdout).toContain('备份还原');
+    expect(r.stdout).not.toMatch(/[\[\]]/);
+    expect(r.stdout).not.toMatch(/[ \t]+$/m);
+    // The internal enum names stay internal.
+    expect(`${r.stdout}${r.stderr}`).not.toContain('file-history');
+  });
+
+  it('says 来源： on the success line too', () => {
+    const r = run([join(dir, 'r.html'), '--step', '0', '--out', join(dir, 'p.patch')]);
+    expect(r.status).toBe(0);
+    expect(r.stderr).toContain('来源：日志内联');
+    expect(r.stderr).not.toMatch(/source=/);
+  });
+});

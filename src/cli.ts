@@ -362,6 +362,18 @@ function argValue(argv: string[], flag: string): string | undefined {
   const i = argv.indexOf(flag);
   return i >= 0 ? argv[i + 1] : undefined;
 }
+/**
+ * `--list` used to print `[log         ]` — a bracketed internal enum padded
+ * to a fixed width. Nothing in the rest of the CLI talks that way, and the
+ * padding made the two real sources (`log`, `file-history`) look like one
+ * five-word constant. The project's own Chinese is already decided:
+ * `日志内联` for a before-image the transcript carried, `备份还原` for one
+ * recovered from ~/.claude/file-history. Reuse those words instead of
+ * inventing a third vocabulary.
+ */
+function revertSourceLabel(source: 'log' | 'file-history'): string {
+  return source === 'file-history' ? '备份还原' : '日志内联';
+}
 
 async function cmdRevert(argv: string[]): Promise<number> {
   // Consume flag values so they never look like the positional report path.
@@ -393,7 +405,7 @@ async function cmdRevert(argv: string[]): Promise<number> {
       return 1;
     }
     for (const r of rows) {
-      console.log(`step ${String(r.step).padStart(5)}  [${r.source.padEnd(12)}]  ${r.path}`);
+      console.log(`step ${String(r.step).padStart(5)}  ${revertSourceLabel(r.source)}  ${r.path}`);
     }
     console.error(`\n${rows.length} 个能撤回的步骤。用 --step <n> 生成补丁。`);
     return 0;
@@ -413,7 +425,7 @@ async function cmdRevert(argv: string[]): Promise<number> {
   const out = argValue(argv, '--out');
   if (out) {
     writeFileSync(out, r.patch, 'utf8');
-    console.error(`wrote ${out}  step ${r.step}  ${r.path}  +${r.added} -${r.removed}  source=${r.source}`);
+    console.error(`wrote ${out}  step ${r.step}  ${r.path}  +${r.added} -${r.removed}  来源：${revertSourceLabel(r.source)}`);
     console.error(`apply it backwards with:  git apply -R ${out}`);
   } else {
     process.stdout.write(r.patch);
