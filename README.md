@@ -630,24 +630,48 @@ Full measurements, repo-by-repo, with the commands to re-run them:
 
 ---
 
-## If you searched npm for "agent replay"
+## How this compares to what already exists
 
-You found two packages. Both are measured live, right now, with the commands in
-[docs/COMPETITIVE.md](docs/COMPETITIVE.md):
+Everything below was read live off the GitHub API and the npm registry on
+2026-09-28; the commands are in [docs/COMPETITIVE.md](docs/COMPETITIVE.md). The
+two nearest projects by stars, and the two nearest by npm name:
 
-| | `agent-replay` | `flightrec` | **midflight-replay** |
+| | `mindwalk` | `chidori` | **midflight-replay** |
 |---|---|---|---|
-| npm version | 0.1.1 | 0.9.0 | **0.1.0** |
-| last publish | 2026-02-16 | 2026-07-15 | today |
-| downloads / month | 9 | 16 | — |
-| GitHub repo | **404, deleted or private** | **0★**, created and last pushed the same day | public, CI green |
-| what it is | "DevTools for replaying AI agent sessions" | "A flight recorder for Codex sessions" | a **file you attach to a PR** |
-| source | not published | not published | **full source, MIT** |
+| ★ on GitHub | **1362** | **1365** | **0** (published today) |
+| last push | 2026-08-10 | 2026-09-24 | today |
+| what it is | a **3D night map** of your repo; light moves where the agent searched | an **agent framework**: record every host call, replay byte-identically with zero LLM calls | forensics **after the fact** on logs from agents you already run |
+| needs your agent built with it | no | **yes** | no |
+| output | a Go binary you watch | a resumable runtime | **one self-contained HTML file you attach to a PR or an issue** |
+| shows *where* it looked | yes | no | yes (which files, in what order) |
+| shows *what changed* and undoes it | no | no | **yes — `revert` prints a real patch, and labels the edits it cannot reverse** |
+| installable into the agent itself | no | n/a | **`midflight install` writes one SKILL.md into Codex / Claude Code / Cursor / …** |
+| npm | — | crates.io | **`midflight-replay` 0.1.2, not yet on the registry** |
+| source | open | open | **open, MIT** |
 
-The distinction that matters is not features. It is that neither of those is
-installable-and-verifiable: one has no reachable repository, the other has a
-repository that has never had a second commit. You cannot read either one, you
-cannot file an issue against it, and you cannot check whether it still runs.
+Numbers above were read with `gh api` on 2026-09-28 and are in `docs/COMPETITIVE.md`
+with the commands that produced them.
+
+The two npm incumbents are worth naming too, because they are the reason the
+name matters: `agent-replay` (8 downloads/month) points at a repository that now
+**404s**, and `flightrec` (16/month) is a **0★** repo whose creation date is its
+last push date. That is the bar this project is measured against on day one.
+
+The distinction that matters against the 1300★ projects is scope, not features.
+`chidori` is the strongest of the three and it is aimed somewhere else: you adopt
+it *to build* the agent, and it earns its stars by making the agent durable.
+`mindwalk` reads the same Codex and Claude Code logs and answers a different
+question &mdash; *where* did the agent look, drawn as light on a map. Neither one
+tells you **what the agent changed, whether you can undo it, or gives the answer
+to somebody who was not in the session**: a reviewer on a PR, or you three weeks
+later. That is the gap this fills, and it is why the output is a single HTML file
+with no server and no install, rather than an app you have to learn.
+
+It is also worth saying what this project will not do to win stars: it does not
+badge itself `CI green` while its workflow files are parked off-tree for lack of
+a token scope, and it does not count a host as readable until a real log of that
+host has parsed. Both refusals cost it stars. Both are also the only reason the
+table above is worth reading.
 
 So the test here is deliberately the cheapest one that cannot be faked: **install
 it and make something.**

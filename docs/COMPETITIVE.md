@@ -1,11 +1,19 @@
-# 竞品实测（2026-09-27，api.github.com 未认证实测，命令见文末）
+# 竞品实测（2026-09-28 更新，`gh api` 已认证实测，命令见文末）
 
-> 结论先行：**"agent 会话回放"这个定位已经有人占了，天花板约 390★，且最像我们想法的那个项目已经存在。**
+> **2026-09-28 更正**：本文 09-27 版本写"天花板约 390★"，同一天用 `gh api` 复核就发现
+> 两个 1300★ 级别的项目（`cosmtrek/mindwalk` 1362★、`ThousandBirdsInc/chidori` 1365★），
+> 之前那版只搜了名字里带 replay/trace/viewer 的仓库，漏掉了不打这些词的。**天花板不是 390★，
+> 是 1300★ 量级**，下面的定位与差异化必须按这个量级重新算。以下全部为实测值。
+>
+> 结论先行：**"agent 会话回放"这个定位已经有人占了，天花板 1300★ 量级，且最像我们想法的那个项目已经存在。**
 > 这份文档的存在意义是让 G2 总监在有证据的前提下决策，而不是凭"这个方向很新"的直觉。
 
 ## 1. 直接竞品（8 个，全部实测到 star / 建仓日 / 最后 push / 语言 / 许可）
 | ★ | 仓库 | 建仓 | 最后 push | 语言 | 许可 | 它是什么 |
 |---|---|---|---|---|---|---|
+| **1365** | `ThousandBirdsInc/chidori` | 2026 | **2026-09-24** | Rust/TS | Apache-2.0 | **agent 框架**：每个 LLM/工具/HTTP 调用都记成 host call，可 checkpoint、**零 LLM 调用逐字节重放**、崩溃后续跑。59 fork / 15 open issues |
+| **1362** | `cosmtrek/mindwalk` | 2026 | 2026-08-10 | Go | MIT | 把仓库画成 3D 夜图，回放时"光"跟着 agent 走：**看它搜了哪、读了哪、改了哪**。读 Claude/Codex/pi 日志，纯本地，一个 Go 二进制。121 fork / 17 open issues |
+| 93 | `TheAceTeam/CC-Flight` | 2026 | 2026-09-04 | — | Apache-2.0 | "Flight recorder for Claude Code, Codex & OpenCode" |
 | 388 | `jerrywu001/cc-sessions-viewer` | 2026-05-20 | 2026-09-17 | Rust | MIT | 桌面浏览器，支持 **7 种** agent（cc/codex/grok/kimi/pi/antigravity/opencode）+ 工具管理页 |
 | 372 | `delexw/claude-code-trace` | 2026-03-11 | 2026-09-26 | Rust | MIT | Claude Code session log viewer（JSONL） |
 | 268 | `Continuum-AI-Corp/OrcaReplay` | 2026-08-29 | 2026-09-26 | TS | Apache-2.0 | "Time travel for AI agents. Record, replay, fork, and…" |
