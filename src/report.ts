@@ -20,9 +20,19 @@ export interface ReportResult {
   coverageVerdict: string;
 }
 
-/** JSON safe to drop inside <script type="application/json">: the only sequence that can
- *  break out of the element is `</script`. Escape its `<` and keep the rest readable. */
-const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/<\//g, '<\\/');
+/**
+ * Data goes into the page as one inline `<script>`, so a `<` inside a tool output is not
+ * inert text: the HTML tokenizer reads `<!--` as "script data escaped" and `<script` as
+ * "double escaped", and from that state the document's own `</script>` no longer closes the
+ * element. The whole app then sits inside one unparsable script and the report opens blank.
+ * Measured on a real 3,976-step Codex session that mentioned `<!--` and `<script` in tool
+ * output: 2.2 MB of script text, zero page errors, zero DOM, no visible reason.
+ *
+ * Escaping only `</` is not enough — that was the previous version here, and it left both
+ * entry points open. Every `<` becomes `\u003c`, which JSON and JS both decode back to `<`,
+ * so the data round-trips byte-for-byte and the tokenizer can never leave script data state.
+ */
+const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, '\\u003c');
 
 export function buildReport(session: Session, opts: ReportOptions = {}): ReportResult {
   const maxBytes = opts.maxBytes ?? 5 * 1024 * 1024;

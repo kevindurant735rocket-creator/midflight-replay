@@ -29,7 +29,16 @@ for (const f of files) {
   page.on('pageerror', (e) => errs.push(String(e)));
 
   await page.goto(pathToFileURL(resolve(f)).href, { waitUntil: 'load' });
-  await page.waitForTimeout(250);
+  // Wait for the app to have rendered, never for a stopwatch. A fixed 250ms sleep passed on
+  // the 30 KB fixtures and raced on a real 3.4 MB / 4016-step report — the AC-3 multi-host
+  // gate hit exactly that, and the failure it produced (`header h1` count 0) looked like a
+  // broken report when the report was merely still building. The readiness signal is the
+  // report's own contract: the header exists and the step count is defined.
+  await page.waitForFunction(
+    () => document.querySelector('header h1') !== null && typeof N !== 'undefined',
+    null,
+    { timeout: 120000 },
+  );
 
   // ---- AC-4: the file is self-contained; nothing is fetched ----
   ok('zero network requests', reqs.length === 0, `got ${reqs.length}: ${reqs.slice(0, 3).join(', ')}`);

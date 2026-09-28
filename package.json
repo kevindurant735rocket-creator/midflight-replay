@@ -1,6 +1,6 @@
 {
   "name": "midflight-replay",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "description": "Turn a finished AI coding-agent session into a scrubbable, single-file HTML replay you can attach to a PR. Zero deps, zero build, zero network.",
   "license": "MIT",
@@ -13,8 +13,12 @@
     "midflight-replay": "dist/cli.js"
   },
   "files": [
+    "CHANGELOG.md",
     "dist",
-    "CHANGELOG.md"
+    "fixtures/cursor-mini.jsonl",
+    "fixtures/windsurf-cascade-empty.pb",
+    "fixtures/windsurf-cascade-mini.pb",
+    "fixtures/windsurf-cascade-plaintext.pb"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -28,7 +32,8 @@
     "check:readme": "node scripts/readme-commands.mjs",
     "verify:tarball": "bash scripts/verify-tarball.sh",
     "smoke:real": "node scripts/real-log-smoke.mjs",
-    "smoke:real:ci": "node scripts/real-log-smoke.mjs --limit 40"
+    "smoke:real:ci": "node scripts/real-log-smoke.mjs --limit 40",
+    "smoke:browser:real": "node scripts/browser-real-hosts.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

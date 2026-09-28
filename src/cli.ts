@@ -154,7 +154,7 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
     ok,
     file: path,
     bytes,
-    adapter: detectAdapter(path),
+    adapter: await detectAdapter(path),
     agent: session.meta.agent,
     sessionId: session.meta.sessionId,
     cliVersion: session.meta.cliVersion,

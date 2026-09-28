@@ -47,6 +47,13 @@ export interface AgentSpec {
   pruneDirs?: RegExp;
   /** plain-language answer for "installed, but no session data on this machine" */
   sessionHint?: string;
+  /**
+   * Has this adapter been checked against a real log from this host? An adapter written
+   * from a published format and a fixed sample is a claim; one run against a log a real
+   * session produced is evidence. Only the second earns the plain word `readable`, so a
+   * host that ships a parser nobody has seen run is reported as `unverified` instead.
+   */
+  verified?: boolean;
 }
 
 export interface AgentHit {
@@ -65,7 +72,7 @@ export interface AgentReport {
    * record, so there is nothing for an adapter to fail at. Reporting that as `unsupported`
    * tells the reader to go looking for a parser bug that does not exist.
    */
-  status: 'supported' | 'unsupported' | 'absent' | 'empty';
+  status: 'supported' | 'unverified' | 'unsupported' | 'absent' | 'empty';
   /** roots that actually existed on this machine */
   rootsFound: string[];
   files: number;
@@ -82,6 +89,9 @@ export const AGENTS: AgentSpec[] = [
     label: 'Codex CLI',
     adapter: 'codex',
     support: 'full adapter — session_meta + response_item + compaction events',
+    // Verified the only way that counts: scripts/real-log-smoke.mjs parses this host's
+    // real rollouts on every CI run and every `npm run smoke:real` on a developer machine.
+    verified: true,
     roots: ['.codex/sessions', '.codex/archived_sessions'],
     match: /rollout-.*\.jsonl$/,
     recursive: true,
@@ -94,6 +104,7 @@ export const AGENTS: AgentSpec[] = [
     label: 'Claude Code',
     adapter: 'claude-code',
     support: 'full adapter — transcript records + ~/.claude/file-history before-images',
+    verified: true,
     roots: ['.claude/projects'],
     match: /\.jsonl$/,
     recursive: true,
@@ -104,16 +115,20 @@ export const AGENTS: AgentSpec[] = [
   {
     id: 'cursor',
     label: 'Cursor',
-    adapter: null,
-    support: 'no adapter — Cursor keeps chat state in a private store, not a JSONL transcript',
-    roots: ['.cursor'],
-    match: null,
+    adapter: 'cursor',
+    support:
+      'adapter ships — Anthropic-shaped agent-transcripts JSONL, written from the published ' +
+      'on-disk layout; the IDE-side ~/.cursor/chats store.db is deliberately not read',
+    verified: false,
+    roots: ['.cursor/projects', '.cursor'],
+    match: /\.jsonl$/i,
     recursive: true,
-    maxDepth: 3,
+    maxDepth: 5,
     absentMeans: 'no ~/.cursor directory',
-    only: /[\\/]chats[\\/]/,
-    pruneDirs: /^(rules|skills|extensions|images|commands)$/,
-    sessionHint: 'Cursor 装在这台机器上，但还没找到聊天记录（Cursor 把聊天放在 ~/.cursor/chats）',
+    only: /[\\/]agent-transcripts[\\/]/,
+    pruneDirs: /^(rules|skills|extensions|chats|commands|images|bin|logs)$/,
+    sessionHint:
+      'Cursor 装在这台机器上，但还没找到 CLI 的对话记录（它们在 ~/.cursor/projects/*/agent-transcripts）',
   },
   {
     id: 'gemini-cli',
@@ -190,16 +205,20 @@ export const AGENTS: AgentSpec[] = [
   {
     id: 'windsurf',
     label: 'Windsurf',
-    adapter: null,
-    support: 'no adapter — conversations are account-side, nothing readable on disk',
-    roots: ['.codeium/windsurf', '.windsurf'],
-    match: null,
+    adapter: 'windsurf',
+    support:
+      'cascade store is encrypted at rest — midflight measures the entropy on your own bytes ' +
+      'and says the session cannot be replayed, instead of drawing an empty timeline',
+    verified: false,
+    roots: ['.codeium/windsurf/cascade', '.codeium/windsurf'],
+    match: /\.pb$/i,
     recursive: true,
-    maxDepth: 3,
-    absentMeans: 'no ~/.codeium/windsurf',
-    only: /[\\/]chats[\\/]|cascade[^\\/]*\.db$/i,
-    pruneDirs: /^(rules|skills|extensions|commands|bin|logs)$/,
-    sessionHint: 'Windsurf 装在这台机器上，但还没找到聊天记录（Windsurf 的对话存在它的账号侧，本机只有规则文件）',
+    maxDepth: 2,
+    absentMeans: 'no ~/.codeium/windsurf directory',
+    only: /[\\/]cascade[\\/]/i,
+    pruneDirs: /^(rules|skills|extensions|commands|bin|logs|memories|brain|code_tracker|context_state)$/,
+    sessionHint:
+      'Windsurf 装在这台机器上，但 ~/.codeium/windsurf/cascade 下没有会话文件',
   },
   {
     id: 'factory-droid',
@@ -263,6 +282,10 @@ export async function scanAgents(opts: ScanOptions): Promise<AgentReport[]> {
     const roots = spec.roots.map((r) => (r.startsWith('~') ? join(home, r.slice(1)) : join(home, r)));
     const found = roots.filter((r) => existsSync(r));
     const hits: AgentHit[] = [];
+    // Two roots frequently overlap (`.cursor/projects` and `.cursor` both reach one
+    // transcript), and `only` is a path filter, so the same file is collected twice and
+    // the count the table prints is inflated. Dedupe on the absolute path.
+    const seen = new Set<string>();
     for (const r of found) {
       // depth is counted from the probed root so maxDepth means what the table says
       if (spec.recursive) {
@@ -275,21 +298,25 @@ export async function scanAgents(opts: ScanOptions): Promise<AgentReport[]> {
         hits.push({ file: r, bytes: st.size, mtimeMs: st.mtimeMs });
       }
     }
-    const bytes = hits.reduce((a, h) => a + h.bytes, 0);
-    let newest: AgentHit | null = null;
-    for (const h of hits) if (!newest || h.mtimeMs > newest.mtimeMs) newest = h;
+    const uniq = hits.filter((h) => (seen.has(h.file) ? false : (seen.add(h.file), true)));
+    const bytes = uniq.reduce((a, h) => a + h.bytes, 0);
+    let newestHit: AgentHit | null = null;
+    for (const h of uniq) if (!newestHit || h.mtimeMs > newestHit.mtimeMs) newestHit = h;
+    const newest = newestHit;
     const status: AgentReport['status'] =
-      hits.length === 0
+      uniq.length === 0
         ? found.length > 0
           ? 'empty'
           : 'absent'
         : spec.adapter
-          ? 'supported'
+          ? spec.verified
+            ? 'supported'
+            : 'unverified'
           : 'unsupported';
     // The host directory exists but holds no session record. Saying "no adapter, 2 files
     // found" there is the worst of both worlds: it names a real adapter gap and attaches a
     // file count that is really counting rules files. Say the plain thing instead.
-    const installedButEmpty = hits.length === 0 && found.length > 0;
+    const installedButEmpty = uniq.length === 0 && found.length > 0;
     const rep: AgentReport = {
       id: spec.id,
       label: spec.label,
@@ -297,7 +324,7 @@ export async function scanAgents(opts: ScanOptions): Promise<AgentReport[]> {
       support: installedButEmpty ? spec.sessionHint ?? `${spec.absentMeans}; no session record under it` : spec.support,
       status,
       rootsFound: found,
-      files: hits.length,
+      files: uniq.length,
       bytes,
       newest: newest ? newest.file : null,
       newestMtime: newest ? newest.mtimeMs : 0,
@@ -334,23 +361,36 @@ export function formatAgentTable(reports: AgentReport[]): string {
       continue;
     }
     const st =
-      r.status === 'supported' ? 'readable' : r.status === 'empty' ? 'no records' : 'no adapter';
+      r.status === 'supported'
+        ? 'readable'
+        : r.status === 'unverified'
+          ? 'unverified'
+          : r.status === 'empty'
+            ? 'no records'
+            : 'no adapter';
     const when = r.newest ? new Date(r.newestMtime).toISOString().slice(0, 10) : '-';
     lines.push(
       `${pad(r.label, 20)}  ${pad(st, 11)}  ${pad(String(r.files), 9)}  ${pad(human(r.bytes), 10)}  ${when}`,
     );
   }
   const readable = reports.filter((r) => r.status === 'supported');
+  const unverified = reports.filter((r) => r.status === 'unverified');
   const found = reports.filter((r) => r.status !== 'absent');
   lines.push('');
   lines.push(
-    `${readable.length} of ${found.length} installed agents readable; ` +
-      `${reports.length - found.length} not installed on this machine.`,
+    `${readable.length} of ${found.length} installed agents readable` +
+      (unverified.length ? `, ${unverified.length} unverified (adapter ships, no real sample yet)` : '') +
+      `; ${reports.length - found.length} not installed on this machine.`,
   );
   for (const r of reports) {
     // "0 file(s) found" is noise: it only ever appeared to pad a sentence that already said
     // there is nothing to read. A count is worth printing only when there is something to count.
     if (r.status === 'unsupported') lines.push(`  ! ${r.label}: ${r.support} (${r.files} file(s) found)`);
+    else if (r.status === 'unverified')
+      lines.push(
+        `  ? ${r.label}: ${r.support} (${r.files} file(s) found; the parser is written from the ` +
+          `published format and has not been run against a real log yet, so this row is not counted as readable)`,
+      );
     else if (r.status === 'empty') lines.push(`  - ${r.label}: ${r.support}`);
     else if (r.status === 'supported' && r.support.includes('newest log:'))
       lines.push(`  \u2713 ${r.label}: ${r.support.slice(r.support.indexOf('newest log:'))}`);

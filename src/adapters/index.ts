@@ -2,8 +2,10 @@ import { createReadStream, openSync, readSync, closeSync } from 'node:fs';
 import type { ParseStats, Session } from '../types.js';
 import { parseCodex, type CodexParseOptions } from './codex.js';
 import { parseClaude, type ClaudeParseOptions } from './claude.js';
+import { parseCursor } from './cursor.js';
+import { parseWindsurfCascade, probeCascade } from './windsurf.js';
 
-export type AdapterName = 'codex' | 'claude-code';
+export type AdapterName = 'codex' | 'claude-code' | 'cursor' | 'windsurf';
 export type ParseOptions = CodexParseOptions & ClaudeParseOptions;
 
 /**
@@ -74,27 +76,63 @@ function sniffFirstObject(path: string, sampleBytes: number): any | null {
  * Sniff the format from the first intact record only. Both formats are JSON Lines, so the
  * discriminator is structural, never the file name.
  */
-export function detectAdapter(path: string, sampleBytes = 8 * 1024 * 1024): AdapterName | 'unknown' {
+export async function detectAdapter(path: string, sampleBytes = 8 * 1024 * 1024): Promise<AdapterName | 'unknown'> {
   const o = sniffFirstObject(path, sampleBytes);
-  if (!o || typeof o !== 'object') return 'unknown';
-  if ('payload' in o && 'type' in o && 'ordinal' in o) return 'codex';
-  if (typeof o.type === 'string' && ('message' in o || 'sessionId' in o || 'uuid' in o)) return 'claude-code';
+  if (o && typeof o === 'object') {
+    if ('payload' in o && 'type' in o && 'ordinal' in o) return 'codex';
+    if (typeof o.type === 'string' && ('message' in o || 'sessionId' in o || 'uuid' in o)) return 'claude-code';
+    // Cursor CLI writes the same content blocks as Claude Code but names the role in
+    // `role`, and its turn marker (`{"type":"turn_ended"}`) has no `message` at all,
+    // so the discriminator is the message record: a role plus a content block array.
+    const msg = (o as any).message;
+    if (typeof (o as any).role === 'string' && msg && typeof msg === 'object' && Array.isArray(msg.content)) return 'cursor';
+    return 'unknown';
+  }
+  // No JSON object anywhere in the window. A transcript with a torn first line still
+  // yields an object (the sniff skips bad lines), so reaching here means the bytes are
+  // not a text log at all. Windsurf's cascade store is the one host we know writes
+  // exactly that, and the probe decides on content rather than on the file name.
+  try {
+    const p = await probeCascade(path);
+    if (p.looksEncrypted) return 'windsurf';
+  } catch {
+    /* unreadable: fall through to unknown */
+  }
   return 'unknown';
 }
 
 export async function parseSession(path: string, opts: ParseOptions = {}): Promise<Session> {
-  const adapter = detectAdapter(path);
+  const adapter = await detectAdapter(path);
   if (adapter === 'codex') return parseCodex(readLines(path), path, opts);
   if (adapter === 'claude-code') return parseClaude(readLines(path), path, opts);
-  // Unknown shape: try codex, fall back to claude, keep whichever produced steps.
-  const a = await parseCodex(readLines(path), path, opts);
-  if (a.steps.length > 0) {
-    a.warnings.push('format not detected; parsed with the codex adapter as a best effort');
-    return a;
+  if (adapter === 'cursor') return parseCursor(readLines(path), path, opts);
+  if (adapter === 'windsurf') return parseWindsurfCascade(path);
+  // Unknown shape: run every text adapter and keep the one that CLASSIFIED the most records.
+  // "First one that returned a step" was the old rule and it was wrong: every adapter emits
+  // an `unknown` step for a record it does not recognise, so `steps.length > 0` was true
+  // even for a file none of them can read, and the first adapter in the list always won.
+  // Scoring on non-unknown steps makes the fallback mean something.
+  const runs: [string, () => Promise<Session>][] = [
+    ['codex', () => parseCodex(readLines(path), path, opts)],
+    ['cursor', () => parseCursor(readLines(path), path, opts)],
+    ['claude-code', () => parseClaude(readLines(path), path, opts)],
+  ];
+  let best: { name: string; session: Session; known: number } | null = null;
+  for (const [name, run] of runs) {
+    let s: Session;
+    try {
+      s = await run();
+    } catch {
+      continue;
+    }
+    const known = s.steps.filter((x) => x.kind !== 'unknown').length;
+    if (!best || known > best.known) best = { name, session: s, known };
   }
-  const b = await parseClaude(readLines(path), path, opts);
-  b.warnings.push('format not detected; parsed with the claude adapter as a best effort');
-  return b;
+  if (best && best.known > 0) {
+    best.session.warnings.push(`format not detected; parsed with the ${best.name} adapter as a best effort`);
+    return best.session;
+  }
+  return best?.session ?? parseClaude(readLines(path), path, opts);
 }
 
 export function statsOf(session: Session, totalLines: number, durationMs: number): ParseStats {
@@ -110,4 +148,4 @@ export function statsOf(session: Session, totalLines: number, durationMs: number
   };
 }
 
-export { parseCodex, parseClaude };
+export { parseCodex, parseClaude, parseCursor, parseWindsurfCascade, probeCascade };

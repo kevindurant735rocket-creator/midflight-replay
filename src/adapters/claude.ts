@@ -61,16 +61,59 @@ function blocksOf(msg: any): any[] {
  * Claude Code JSONL. Contract: docs/FORMATS.md
  * Line shape differs from Codex: the line IS the record, there is no {type,payload} envelope.
  */
-export async function parseClaude(
+/**
+ * Cursor CLI writes the same Anthropic-shaped records as Claude Code, with one
+ * difference that matters: the message role sits in `role`, not in `type`, and a
+ * turn boundary arrives as `{"type":"turn_ended"}`. A parser keyed on `type` reads
+ * a real Cursor transcript as zero steps, which is how a host with plenty of
+ * content ends up reported as empty. The shape is shared; the discriminator is
+ * this profile, not a second copy of the walk.
+ */
+export interface AnthropicHostProfile {
+  agent: string;
+  /** Which top-level record this is, as a switch case. `''` means "no idea" -> unknown record. */
+  kindOf(obj: unknown): string;
+  /** Recover before-images from the host's own backup store. Claude's is keyed by sessionId. */
+  fileHistory: boolean;
+  /**
+   * Record names that mark a boundary and carry no step. They are skipped before the
+   * switch: a Cursor `turn_ended` arriving as an `unknown` step puts a row in the report
+   * for something that is not an event, and inflates the unclassified count that the
+   * coverage bar is computed from.
+   */
+  silentTypes?: ReadonlySet<string>;
+}
+
+const CLAUDE_HOST: AnthropicHostProfile = {
+  agent: 'claude-code',
+  kindOf: (o) => String((o as any)?.type ?? ''),
+  fileHistory: true,
+};
+
+export const CURSOR_HOST: AnthropicHostProfile = {
+  agent: 'cursor',
+  // `type` still wins when present: `turn_ended` and any future typed record are
+  // matched by name, and only a record with no `type` is read as a message.
+  kindOf: (o) => {
+    const r = o as any;
+    if (r?.type != null) return String(r.type);
+    return typeof r?.role === 'string' ? r.role : '';
+  },
+  fileHistory: false,
+  silentTypes: new Set(['turn_ended']),
+};
+
+export async function parseAnthropicShaped(
   lines: AsyncIterable<string>,
-  sourceFile?: string,
-  opts: ClaudeParseOptions = {},
+  sourceFile: string | undefined,
+  opts: ClaudeParseOptions,
+  host: AnthropicHostProfile,
 ): Promise<Session> {
   const o = { ...DEFAULTS, ...opts };
   const steps: ReplayStep[] = [];
   const parseErrors: ParseError[] = [];
   const warnings: string[] = [];
-  const meta: SessionMeta = { sessionId: 'unknown', agent: 'claude-code', ...(sourceFile ? { sourceFile } : {}) };
+  const meta: SessionMeta = { sessionId: 'unknown', agent: host.agent, ...(sourceFile ? { sourceFile } : {}) };
   const redactOn = (s: string): string => (opts.enabled === false ? s : redact(s, opts).text);
 
   let lineNo = 0;
@@ -115,7 +158,8 @@ export async function parseClaude(
     if (!meta.cwd && typeof obj.cwd === 'string') meta.cwd = obj.cwd;
     if (!meta.cliVersion && typeof obj.version === 'string') meta.cliVersion = obj.version;
 
-    const type = String(obj.type ?? '');
+    const type = host.kindOf(obj);
+    if (host.silentTypes?.has(type)) continue;
     try {
       switch (type) {
         case 'assistant':
@@ -284,7 +328,9 @@ export async function parseClaude(
 
   // P0-1: recover before-images from the host's own backup store. Runs after the stream
   // closes because the store is keyed by sessionId, which is only known once the log is read.
-  const fhIndex = indexFileHistory(meta.sessionId, o.homeDir);
+  // A host with no such store (Cursor) skips it: reading ~/.claude/file-history for a
+  // Cursor session would join a backup from a DIFFERENT tool's session with the same id.
+  const fhIndex = host.fileHistory ? indexFileHistory(meta.sessionId, o.homeDir) : { backups: 0 } as ReturnType<typeof indexFileHistory>;
   const { joins, untracked, unresolved } = planJoins(deltas, edits);
   const { stats, attached } = attachBackups(joins, fhIndex, { redact: redactOn, redactEnabled: opts.enabled !== false });
   // attachBackups already redacted the recovered bytes; redacting twice is safe but is one
@@ -316,4 +362,12 @@ export async function parseClaude(
   const unknownCount = steps.filter((s) => s.kind === 'unknown').length;
   const fileHistory: FileHistoryStats | undefined = deltas.length > 0 || fhIndex.backups > 0 ? stats : undefined;
   return { meta, steps, parseErrors, warnings, unknownCount, truncated: parseErrors.length > 0, ...(fileHistory ? { fileHistory } : {}) };
+}
+
+export function parseClaude(
+  lines: AsyncIterable<string>,
+  sourceFile?: string,
+  opts: ClaudeParseOptions = {},
+): Promise<Session> {
+  return parseAnthropicShaped(lines, sourceFile, opts, CLAUDE_HOST);
 }

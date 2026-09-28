@@ -1,0 +1,4 @@
+{"type":"user","message":{"content":[{"type":"text","text":"paste the html snippet you just wrote"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/tmp/demo/snippet.html"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"<!-- a comment that must not end the script -->\n<script>alert('xss')</script>\n</script>\n<style>body{display:none}</style>"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"That snippet closes the script tag early if you paste it raw."}]}}

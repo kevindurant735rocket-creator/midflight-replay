@@ -27,17 +27,42 @@ describe('scanAgents measures instead of guessing', () => {
   // is reported with a real count, never dropped from the table.
   it('surfaces an installed agent with no adapter instead of hiding it', async () => {
     const h = home();
-    // A real session store: Cursor writes chats under ~/.cursor/chats/<hash>/<id>.json
+    // A real store for a host that ships no adapter: the Gemini CLI keeps a single JSON blob.
+    mkdirSync(join(h, '.gemini/tmp'), { recursive: true });
+    writeFileSync(join(h, '.gemini/tmp/chat.json'), '{"messages":[]}');
+    const r = await scanAgents({ homeDir: h });
+    const gemini = r.find((x) => x.id === 'gemini-cli')!;
+    expect(gemini.status).toBe('unsupported');
+    expect(gemini.adapter).toBeNull();
+    expect(gemini.files).toBe(1);
+    const t = formatAgentTable(r);
+    expect(t).toMatch(/Gemini CLI/);
+    expect(t).toMatch(/no adapter/);
+  });
+
+  // The Cursor IDE writes ~/.cursor/chats/<hash>/<id>.json. That store is NOT the format
+  // midflight reads (the CLI's agent-transcripts are), so counting it would put a file
+  // count next to a parser that cannot open those files — the same false claim the rule
+  // files caused, one layer over.
+  it('does not count the Cursor IDE chat store as sessions it can read', async () => {
+    const h = home();
     mkdirSync(join(h, '.cursor/chats/abc123'), { recursive: true });
     writeFileSync(join(h, '.cursor/chats/abc123/session-1.json'), '{"messages":[]}');
-    const r = await scanAgents({ homeDir: h });
-    const cursor = r.find((x) => x.id === 'cursor')!;
-    expect(cursor.status).toBe('unsupported');
-    expect(cursor.adapter).toBeNull();
-    expect(cursor.files).toBe(1);
-    const t = formatAgentTable(r);
-    expect(t).toMatch(/Cursor/);
-    expect(t).toMatch(/no adapter/);
+    const cursor = (await scanAgents({ homeDir: h })).find((x) => x.id === 'cursor')!;
+    expect(cursor.files).toBe(0);
+    expect(cursor.status).toBe('empty');
+  });
+
+  it('ships an adapter that is not yet called readable', async () => {
+    const h = home();
+    mkdirSync(join(h, '.cursor/projects/demo/agent-transcripts'), { recursive: true });
+    writeFileSync(join(h, '.cursor/projects/demo/agent-transcripts/a.jsonl'),
+      '{"role":"user","message":{"content":[{"type":"text","text":"hi"}]}}\n');
+    const cursor = (await scanAgents({ homeDir: h })).find((x) => x.id === 'cursor')!;
+    expect(cursor.adapter).toBe('cursor');
+    expect(cursor.status).toBe('unverified');
+    const t = formatAgentTable([cursor]);
+    expect(t).toMatch(/0 of 1 installed agents readable, 1 unverified/);
   });
 
   // Regression: `midflight install` writes its own rule file into ~/.cursor/rules and
@@ -62,16 +87,18 @@ describe('scanAgents measures instead of guessing', () => {
     }
   });
 
-  it('reports the real session count once a real chat exists next to the rule files', async () => {
+  it('reports the real session count once a real transcript exists next to the rule files', async () => {
     const h = home();
     mkdirSync(join(h, '.cursor/rules/midflight-replay'), { recursive: true });
     writeFileSync(join(h, '.cursor/rules/midflight-replay/midflight-replay.mdc'), 'rule');
-    mkdirSync(join(h, '.cursor/chats/abc123'), { recursive: true });
-    writeFileSync(join(h, '.cursor/chats/abc123/session-1.json'), '{"messages":[]}');
-    writeFileSync(join(h, '.cursor/chats/abc123/session-2.json'), '{"messages":[]}');
+    const t = join(h, '.cursor/projects/demo/agent-transcripts');
+    mkdirSync(t, { recursive: true });
+    writeFileSync(join(t, 'one.jsonl'), '{"role":"user","message":{"content":[{"type":"text","text":"a"}]}}\n');
+    writeFileSync(join(t, 'two.jsonl'), '{"role":"user","message":{"content":[{"type":"text","text":"b"}]}}\n');
     const cursor = (await scanAgents({ homeDir: h })).find((x) => x.id === 'cursor')!;
+    // Two transcripts, counted once each even though `.cursor` and `.cursor/projects` both reach them.
     expect(cursor.files).toBe(2);
-    expect(cursor.status).toBe('unsupported');
+    expect(cursor.status).toBe('unverified');
   });
 
   it('never prints a file count of zero as if it were a finding', async () => {
@@ -87,7 +114,15 @@ describe('scanAgents measures instead of guessing', () => {
       expect(typeof a.support).toBe('string');
       expect(a.support.length).toBeGreaterThan(10);
       if (a.adapter === null) expect(a.support).toMatch(/no adapter/);
-      else expect(['codex', 'claude-code']).toContain(a.adapter);
+      else expect(['codex', 'claude-code', 'cursor', 'windsurf']).toContain(a.adapter);
+    }
+  });
+
+  it('only a host whose parser has seen a real log may call itself readable', () => {
+    for (const a of AGENTS) {
+      if (a.status === undefined && a.adapter === 'codex') expect(a.verified).toBe(true);
+      if (a.adapter === 'claude-code' || a.adapter === 'codex') expect(a.verified).toBe(true);
+      if (a.adapter === 'cursor' || a.adapter === 'windsurf') expect(a.verified).toBeFalsy();
     }
   });
 
