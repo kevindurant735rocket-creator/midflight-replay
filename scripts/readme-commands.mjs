@@ -95,7 +95,9 @@ function extractCommands(md) {
   for (const block of md.matchAll(/```bash\n([\s\S]*?)```/g)) {
     for (const raw of block[1].split('\n')) {
       const line = raw.trim();
-      if (/^(npx\s+midflight-replay|midflight)\s/.test(line)) out.push(line);
+      // `npx github:<owner>/<repo>` is the pre-publish install path, so the README can
+      // carry a command that runs today instead of one that 404s until npm publish.
+      if (/^(npx\s+midflight-replay|npx\s+github:[\w.-]+\/[\w.-]+|midflight)\s/.test(line)) out.push(line);
     }
   }
   return out;
@@ -108,7 +110,10 @@ function stripComment(line) {
 
 function rewrite(line, tmp) {
   let cmd = stripComment(line);
-  cmd = cmd.replace(/^npx\s+midflight-replay\s+/, `${CLI} `).replace(/^midflight\s+/, `${CLI} `);
+  cmd = cmd
+    .replace(/^npx\s+midflight-replay\s+/, `${CLI} `)
+    .replace(/^npx\s+github:[\w.-]+\/[\w.-]+\s+/, `${CLI} `)
+    .replace(/^midflight\s+/, `${CLI} `);
 
   // never write into the operator's real agent config from a README check
   if (/\binstall\b/.test(cmd)) {

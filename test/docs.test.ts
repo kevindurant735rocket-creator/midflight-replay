@@ -58,9 +58,20 @@ describe('docs: the package name is never confused with the binary name', () => 
     const wrong: string[] = [];
     for (const file of docs()) {
       const text = readFileSync(file, 'utf8');
-      for (const m of text.matchAll(/\bnpx\s+(--?[\w-]+\s+)*([@a-z0-9][\w./@-]*)/g)) {
+      // `github:owner/repo` is captured whole, colon included, so the pre-publish install
+      // path can be checked against *this* repo instead of sailing past on a truncated
+      // `github` token. A typo'd repo or a competitor's repo still fails here.
+      for (const m of text.matchAll(
+        /\bnpx\s+(--?[\w-]+\s+)*(github:[\w.-]+\/[\w.-]+|[@a-z0-9][\w./@-]*)/g,
+      )) {
         const target = m[2];
         if (TOOL_ALLOWLIST.includes(target)) continue;
+        if (target.startsWith('github:')) {
+          const repo = target.slice('github:'.length).split('/')[1] ?? '';
+          if (repo === PKG) continue;
+          wrong.push(`${file.replace(REPO + '/', '')}: npx ${target} (points at another repo, not ${PKG})`);
+          continue;
+        }
         if (target === PKG || target.startsWith(`${PKG}@`)) continue;
         wrong.push(`${file.replace(REPO + '/', '')}: npx ${target}`);
       }

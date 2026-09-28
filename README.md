@@ -10,6 +10,26 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
 
+## Run it on your own session &mdash; one command, nothing to clone
+
+```bash
+npx github:kevindurant735rocket-creator/midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
+```
+
+That reads the most recent Codex session off this machine and writes one self-contained
+`replay.html` you can open or attach to a pull request. On Claude Code, point it at
+`~/.claude/projects/*/*.jsonl` instead. Not sure which logs you have? Ask:
+
+```bash
+npx github:kevindurant735rocket-creator/midflight-replay agents --probe
+```
+
+Everything runs on your own machine. No network calls, no telemetry, no database, and the
+tool ships zero runtime dependencies &mdash; redaction of paths, keys and emails is on by
+default. <sub>Requires Node 20+. Once the package is on npm this becomes
+<code>npx midflight-replay</code>; until then the <code>github:</code> form above is the
+one that actually installs.</sub>
+
 
 <p align="center">
   <a href="#see-it-move">16s replay</a> ·
@@ -195,22 +215,31 @@ found. It is the honest answer to "can this read my agent?", measured every run:
 $ midflight agents --probe
 agent                 status       sessions   size        newest
 --------------------  -----------  ---------  ----------  -----------------
-Codex CLI             readable     833        628.0 MB    2026-09-28
+Codex CLI             readable     846        665.9 MB    2026-09-28
 Claude Code           readable     173        226.9 MB    2026-09-27
-Cursor                no adapter   1          8.6 KB      2026-08-31
-Gemini CLI            not installed
+Cursor                no records   0          0 B         -
+Windsurf              no records   0          0 B         -
+Gemini CLI            no records   0          0 B         -
 ...
-2 of 3 installed agents readable; 8 not installed on this machine.
-  ✓ Codex CLI: newest log: 2269 steps, 0 parse errors
+2 of 7 installed agents readable; 4 not installed on this machine.
+  ✓ Codex CLI: newest log: 3568 steps, 0 parse errors
   ✓ Claude Code: newest log: 140 steps, 0 parse errors
-  ! Cursor: no adapter — Cursor keeps chat state in a private store, not a JSONL transcript (1 file(s) found)
+  - Cursor: Cursor is on this machine, but no chat record yet (Cursor keeps chats in ~/.cursor/chats)
+  - Windsurf: Windsurf is on this machine, but no chat record yet (Windsurf conversations live on its account side)
 ```
 
 `--probe` goes further: it parses the newest log of every readable agent, so
-"readable" means *this file parsed just now*, not "should work". An agent whose store
-exists but that midflight cannot read is printed with its real file count — the gap is
-visible instead of silent. The registry covers 11 hosts; the two with full adapters are
-Codex and Claude Code, and every other row says in one line why it is not supported yet.
+"readable" means *this file parsed just now*, not "should work".
+
+The three states are kept apart on purpose. **readable** means a session file was found
+and parsed. **no adapter** means session files were found and this tool cannot read them
+yet, with the real file count attached. **no records** means the host is installed but
+left nothing to read &mdash; a different situation entirely, and one an earlier version
+got wrong: it counted the rule files that `midflight install` writes into
+`~/.cursor/rules` and `~/.codeium/windsurf/rules` as sessions, so a machine where Cursor
+had never stored a single chat reported "1 file(s) found". The registry covers 11 hosts;
+the two with full adapters are Codex and Claude Code, and every other row says in one line
+why it is not supported yet.
 
 ### Install it into your agent
 
