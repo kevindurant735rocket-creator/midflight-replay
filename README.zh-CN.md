@@ -163,6 +163,58 @@ fixture 跑 53 ms 那条路径，不需要任何会话日志。
 
 ---
 
+## 支持哪些智能体
+
+`midflight agents` 扫的是**你本机**的日志目录，每跑一次都是实测：
+
+```
+$ midflight agents --probe
+agent                 status       sessions   size        newest
+--------------------  -----------  ---------  ----------  -----------------
+Codex CLI             readable     833        628.0 MB    2026-09-28
+Claude Code           readable     173        226.9 MB    2026-09-27
+Cursor                no adapter   1          8.6 KB      2026-08-31
+...
+2 of 3 installed agents readable; 8 not installed on this machine.
+  ✓ Codex CLI: newest log: 2269 steps, 0 parse errors
+  ! Cursor: no adapter — Cursor keeps chat state in a private store, not a JSONL transcript (1 file(s) found)
+```
+
+`--probe` 会**真去解析**每个可读智能体最新的那份日志，所以"readable"的意思是
+"这份文件刚刚解析通过了"，不是"应该能行"。装了但读不了的智能体不会被藏起来，而是
+连真实文件数一起列出来。注册表覆盖 11 个宿主，目前 Codex 和 Claude Code 是完整
+adapter，其余每一行都写清了为什么还不支持。
+
+### 装进你自己的智能体
+
+```bash
+midflight install codex        # 只写一个文件：~/.codex/skills/midflight-replay/SKILL.md
+midflight install --all        # 所有已知宿主
+midflight install --dry-run    # 只打印路径，不写盘
+```
+
+只写一个 `SKILL.md`，别的什么都不碰 —— 没有 hook、没有常驻进程、不改配置、不联网。
+这是故意的：midflight 读的是智能体自己已经写下的日志，没有东西需要拦截；而给一个
+长会话套一层壳子，只会多一个能把会话搞崩的东西。这个 skill 是纯 Markdown，装之前
+你能自己读完；不带 `--force` 时它拒绝覆盖已存在的不同文件；skill 里写的每条命令
+都有测试断言在同一个构建里真的存在。
+
+| 宿主 | 路径 | 文件 |
+|---|---|---|
+| Codex CLI | `~/.codex/skills/midflight-replay/` | `SKILL.md` |
+| Claude Code | `~/.claude/skills/midflight-replay/` | `SKILL.md` |
+| opencode | `~/.config/opencode/skill/midflight-replay/` | `SKILL.md` |
+| Gemini CLI | `~/.gemini/skills/midflight-replay/` | `SKILL.md` |
+| Cursor | `~/.cursor/rules/midflight-replay/` | `*.mdc` |
+| Windsurf | `~/.codeium/windsurf/rules/midflight-replay/` | `*.md` |
+| GitHub Copilot | `~/.github/prompts/midflight-replay/` | `*.prompt.md` |
+
+各宿主的 frontmatter 是按各自的加载规则生成的（Codex/Claude Code/opencode/Gemini
+要 `name`+`description`，Cursor 只要 `description`，Copilot prompt 不要），这条映射
+有测试锁死，不是把 README 换个文件名。
+
+---
+
 ## 我的会话日志在哪
 
 midflight 读的是 agent 本来就在写的 JSONL。它不要求你打开任何开关，也**不碰你的工作区**。
@@ -334,6 +386,8 @@ midflight stats  <session.jsonl> [--json]    解析并打印步数统计
 midflight postmortem <session.jsonl> [--json] 数循环、反复改同一处、上下文压力
 midflight revert  <report.html> --step <n>    打印撤销第 n 步所需的补丁
 midflight revert  <report.html> --list       列出哪些步骤可逆放
+midflight agents [--json] [--probe]         本机装了哪些智能体、哪些读得了
+midflight install <agent>|--all [--dry-run]  把 midflight skill 装进那个智能体
 midflight redact                            对 stdin 跑脱敏
 midflight --version                          打印已安装的版本
 ```
