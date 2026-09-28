@@ -102,8 +102,14 @@ refuses workflow-file writes without the `workflow` scope, so `gh api --method P
 .../contents/.github/workflows/ci.yml` returns HTTP 404. Measured, not assumed.
 
 So the README carried two badges pointing at workflows the remote does not have
-(`gh api repos/.../actions/workflows --jq .total_count` → `0`). Every visitor saw a
+(`gh api repos/.../actions/runs --jq .total_count` → `0`, and `gh workflow list` returns
+nothing at all, re-measured 2026-09-28 after a push). Every visitor saw a
 broken image in the first screen. They are removed rather than left as decoration.
+
+**The API path is blocked too, re-measured 2026-09-28:**
+`gh api --method PUT repos/…/contents/.github/workflows/self-replay.yml` returns
+HTTP 404 with the token's current scopes `gist, read:org, repo`. It is not a
+`git push` limitation you can route around; the scope is the whole wall.
 
 **They come back when someone runs `gh auth refresh -h github.com -s workflow` and the
 files are un-excluded and pushed.** That is a two-command job, and until it happens
