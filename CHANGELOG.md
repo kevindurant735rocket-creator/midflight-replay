@@ -6,6 +6,46 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The coverage bar no longer contradicts the sentence under it.**
+  On a session whose changes all arrived through shell commands there are zero
+  reversible edits out of 1,720 changes, and the bar used to fill 100% while the
+  text right below it said 0 of 238 could be undone. Two readers, two opposite
+  conclusions. `computeCoverage` now also reports `totalChanges` (structured
+  edits + shell-borne ones) and `reversibleRatio` (reversible / total), and the
+  bar divides by every change instead of by the reversible ones. It reads
+  `可逆放 0%（0 / 1.7k 处改动）`, which agrees with the explanation underneath.
+
+- **A report that failed to parse no longer ships as a blank page.**
+  While renaming a label, one `</div>` escaped its string literal in `report.ts`.
+  The inlined script then died on `SyntaxError: Invalid regular expression`, the
+  page rendered completely empty, and all 147 tests stayed green because none of
+  them looked at the generated script. AC-19 now extracts the inlined `<script>`
+  and constructs it with `new Function`, which parses without executing. Verified
+  in both directions: the good source passes, and re-injecting the exact quote
+  bug makes it fail with the same SyntaxError the browser reported.
+
+### Changed
+
+- **Wording on screen now says what the number means.** `副轴 · 上下文构成（字符
+  质量，非精确 token 归因）` → `副轴 · 上下文占用（按字符数估算，不是精确 token 数）`;
+  `蒸发（压缩丢弃）` → `压缩时丢弃的内容`; `事后法证` → `自动检查` in the report title
+  strip; the context-window field carries a `token` unit; and a compaction row
+  no longer repeats its own label (`压缩丢弃 | 压缩丢弃 N 字符` → `压缩丢弃 | 丢弃
+  N 字符`). The same three strings changed in the `--paste` digest.
+
+  Note on the de-AI gate: `deai-check.sh` only reads `.md/.txt/.html`. Run against
+  the repo root it also ingests `.release-assets/*.html`, which embeds a real
+  session log and trips on the operator's own shell text — a false positive, not
+  a documentation problem. Scoped to the 12 hand-written Markdown files the
+  result is `DEAI-OK hard=0 soft=0 files=12`. Earlier rounds of this changelog
+  quoted `files=12` while actually pointing the gate at the artifacts directory;
+  this is the first run that scanned the documents it claims to cover. The
+  on-screen strings in `src/*.ts` are outside what `deai-check.sh` inspects at
+  all, and were checked by hand instead.
+
+
 ### Added
 
 - **`npm run check:readme` — every command printed in README.md is executed before publish.**

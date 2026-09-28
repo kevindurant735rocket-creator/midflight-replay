@@ -39,6 +39,17 @@ export interface Coverage {
   missing: number;
   /** withBefore / edits, 1.0 when there are no edits at all */
   ratio: number;
+  /** every change the session made: structured edits plus shell-borne mutations */
+  totalChanges: number;
+  /**
+   * withBefore / totalChanges -- the share of ALL changes that can be reversed
+   * offline. `ratio` answers "of the edits the host structured, how many carry a
+   * before-image"; this one answers the question a reader actually has, and the
+   * two diverge exactly when `ratio` is its least honest value: a host with no
+   * structured editor gives ratio 1.0 out of zero edits while nothing at all is
+   * reversible, which rendered as a full bar labelled "100%".
+   */
+  reversibleRatio: number;
   verdict: 'full' | 'partial' | 'diff-only' | 'no-edits';
   /** one sentence, stated in the report verbatim */
   reason: string;
@@ -103,7 +114,11 @@ export function computeCoverage(steps: ReplayStep[], agent: string, fh?: FileHis
       `本会话 ${edits} 处编辑均未记录 before-image（该 host 不写 old_string，本机也没有该会话的 file-history 备份），` +
       `只能看 diff，不能逆放。`;
   }
-  return { agent, edits, withBefore, withBeforeLog, withBeforeBackup, backups, missing, ratio, shellMutations, verdict, reason };
+  return {
+    agent, edits, withBefore, withBeforeLog, withBeforeBackup, backups, missing, ratio, shellMutations,
+    totalChanges: total, reversibleRatio: total === 0 ? 1 : withBefore / total,
+    verdict, reason,
+  };
 }
 
 export const VERDICT_LABEL: Record<Coverage['verdict'], string> = {

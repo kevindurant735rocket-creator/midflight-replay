@@ -443,3 +443,55 @@ describe('AC-13 the installed CLI can be asked what it is', () => {
     expect(readVersion(new URL('file:///etc/hosts'))).toBe('unknown'); // not JSON
   });
 });
+
+
+// A host with no structured editor has edits=0, so the old `ratio` was 1.0 by
+// definition and the report printed a full bar labelled "100%" on a session where
+// nothing at all was reversible. The bar now divides by every change.
+describe('coverage: the displayed ratio is the reversible one', () => {
+  const shellOnly = (): ReplayStep[] => [
+    { kind: 'tool_call', ts: 1, name: 'exec_command', rawArgs: JSON.stringify({ cmd: 'echo a > a.txt' }) },
+    { kind: 'tool_call', ts: 2, name: 'exec_command', rawArgs: JSON.stringify({ cmd: 'echo b > b.txt' }) },
+  ] as ReplayStep[];
+
+  it('reads 0%, not 100%, when every change came from the shell', () => {
+    const c = computeCoverage(shellOnly(), 'codex');
+    expect(c.ratio).toBe(1);            // unchanged: 0 structured edits
+    expect(c.shellMutations).toBeGreaterThan(0);
+    expect(c.reversibleRatio).toBe(0);
+    expect(c.totalChanges).toBe(c.edits + c.shellMutations);
+  });
+
+  it('reads 100% when a real before-image exists', () => {
+    const steps = [{
+      kind: 'tool_call', ts: 1, name: 'edit_file',
+      rawArgs: JSON.stringify({ old_string: 'a', new_string: 'b' }),
+    }] as ReplayStep[];
+    const c = computeCoverage(steps, 'claude-code');
+    expect(c.reversibleRatio).toBe(1);
+  });
+
+  it('is 1 when the session changed nothing at all', () => {
+    const c = computeCoverage([] as ReplayStep[], 'codex');
+    expect(c.totalChanges).toBe(0);
+    expect(c.reversibleRatio).toBe(1);
+  });
+});
+
+describe('the report a user opens is not a blank page (AC-19)', () => {
+  // A misplaced quote inside one innerHTML string shipped a report whose inlined
+  // script failed to parse: the page opened completely empty. Nothing asserted on
+  // the extracted script, so the whole suite stayed green. Two cheap gates close it.
+  const scriptOf = (html: string): string => {
+    const m = /<script[^>]*>([\s\S]*?)<\/script>/.exec(html);
+    expect(m, 'report must inline exactly one script block').toBeTruthy();
+    return m![1];
+  };
+
+  it('inlines a script block that actually parses', () => {
+    const src = scriptOf(buildReport(sess([tc('shell', '{"command":"ls"}')])).html);
+    // `new Function` is a parser, not an executor: a syntax error throws at
+    // construction time, so this proves validity without running any report code.
+    expect(() => new Function(src)).not.toThrow();
+  });
+});

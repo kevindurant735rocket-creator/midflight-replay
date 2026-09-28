@@ -220,7 +220,7 @@ function drawAxes(){
 
   const l2 = el("div","axlabel"); l2.style.marginTop="10px"; l2.style.display="block"; l2.style.lineHeight="1.7";
   const cg = D.ctx;
-  l2.innerHTML = "<span>副轴 · 上下文构成（字符质量，非精确 token 归因）</span><span>"+
+  l2.innerHTML = "<span>副轴 · 上下文占用（按字符数估算，不是精确 token 数）</span><span>"+
     (cg.hasFirstHandCompaction ? "⇣ 第一手压缩事件 "+cg.evaporated.filter(x=>x>0).length+" 次" : "未观测到压缩事件")+
     " · 点击色块跳到该类内容首次进入上下文的一步"+
     (D.thin&&D.thin.truncated ? " · 已抽稀会话：曲线在<b>全量</b>步上测量后按显示点采样，不受丢弃影响" : "")+
@@ -253,7 +253,7 @@ function drawAxes(){
   D.cats.forEach((c,k)=>{ const sp=el("span"); sp.innerHTML='<i class="swatch" style="background:var('+colors[k]+')"></i>'+esc(c.label);
     sp.title="首次进入：第 "+(cg.firstStep[k]>=0? cg.firstStep[k]+1 : "—")+" 步";
     sp.addEventListener("click",()=>{ const fs=cg.firstStep[k]; if(fs>=0) select(fs); }); lg.appendChild(sp); });
-  const gh=el("span"); gh.innerHTML='<i class="swatch ghost"></i>蒸发（压缩丢弃）'; lg.appendChild(gh);
+  const gh=el("span"); gh.innerHTML='<i class="swatch ghost"></i>压缩时丢弃的内容'; lg.appendChild(gh);
   wrap.appendChild(lg);
   return wrap;
 }
@@ -280,8 +280,8 @@ function drawRows(){
     }
     const s=S[cur];
     if(s&&s.kind==="compaction"){
-      const g=el("div","row ghost"); g.innerHTML='<div class="i"></div><div class="k" style="color:var(--c-compaction)">蒸发</div><div class="p">压缩丢弃 '+
-        kb(D.ctx.evaporated[cur]||0)+' 字符上下文 →</div>'; box.insertBefore(g, box.children[cur-start]||null);
+      const g=el("div","row ghost"); g.innerHTML='<div class="i"></div><div class="k" style="color:var(--c-compaction)">压缩丢弃</div><div class="p">丢弃 '+
+        kb(D.ctx.evaporated[cur]||0)+' 字符 →</div>'; box.insertBefore(g, box.children[cur-start]||null);
     }
   };
   box._paint=paint; paint(); return box;
@@ -333,7 +333,7 @@ function detail(){
     '</b> · 本次合计 <b>'+kb(s.total)+'</b>'+(s.threadTotal!=null?' · 线程累计 <b>'+kb(s.threadTotal)+'</b>':'')+'</div>';
   if(s.kind==="compaction") h += '<div class="kv"><span class="badge warn">⇣ 上下文压缩</span>'+
     (s.contextBefore!=null ? ' 宿主上报压缩前 <b>'+kb(s.contextBefore)+'</b> token' : ' 宿主未上报压缩前 token 数')+
-    ' · 本次蒸发 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符（按本报告字符口径）</div>'+
+    ' · 本次压缩丢弃 <b>'+kb(D.ctx.evaporated[cur]||0)+'</b> 字符（字符统计，不是 token）</div>'+
     (s.summary? '<pre>'+esc(s.summary)+'</pre>' : '');
   if(s.kind==="note") h += '<div class="'+(s.level==="info"?"kv":(s.level==="warn"?"kv warn":"kv err"))+'">'+esc(s.text)+"</div>";
   box.innerHTML=h; return box;
@@ -371,7 +371,7 @@ function header(){
   const m=D.meta, c=D.coverage;
   const h=el("header");
   const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
-    ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow):"—"],
+    ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow)+" token":"—"],
     ["来源",D.sourceLabel]];
   let hh='<h1>midflight <small>agent 会话回放 · 事后法证</small></h1><div class="meta">';
   for(const [k,v] of metas) hh+='<span>'+esc(k)+' <b>'+esc(String(v))+'</b></span>';
@@ -383,11 +383,15 @@ function header(){
     (D.unknownCount? '<span class="badge ok" title="host 写入的会话元数据与未分类记录；已渲染并可拖动，不是解析失败。预算不足时会被 thin() 优先丢弃，丢弃量见下方提示。">'+D.unknownCount+
       ' 步为会话元数据 / 未分类（已渲染）</span>':'')+
     '</div>';
-  const pct=Math.round(c.ratio*100);
+  // The bar answers "how much of what the session changed can I undo?", so it divides by
+  // every change, shell-borne ones included. Using c.ratio here printed a full bar labelled
+  // 100% on a session where the verdict below it said 0 of 238 changes are reversible.
+  const denom=(c.totalChanges??(c.edits+c.shellMutations));
+  const pct=Math.round((c.reversibleRatio??c.ratio)*100);
   // The prose above is a verdict; cov-nums prints the three counts it came from, so a
   // reader (or the README) never has to trust a claim they cannot check.
   hh+='<div class="cov '+c.verdict+'"><b>诚实覆盖条</b> · '+esc(c.verdict==="full"?"可逆放":c.verdict==="partial"?"部分可逆放":c.verdict==="diff-only"?"仅 diff":"无编辑")+
-    ' · '+pct+'%<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
+    ' · 可逆放 <b>'+pct+'%</b>（'+kb(c.withBefore??0)+' / '+kb(denom)+' 处改动）<div class="bar"><div class="fill" style="width:'+pct+'%"></div></div><div class="why">'+esc(c.reason)+'</div>'+
     '<div class="kv cov-nums" data-edits="'+c.edits+'" data-shell="'+c.shellMutations+'" data-before="'+c.withBefore+'" data-before-log="'+c.withBeforeLog+'" data-before-backup="'+c.withBeforeBackup+'" data-backups="'+c.backups+'">'+
     '结构化编辑 <b>'+c.edits+'</b> · shell 改动 <b>'+c.shellMutations+'</b> · 带 before-image <b>'+c.withBefore+'</b>'+
     (c.withBeforeBackup>0 ? '（日志内联 <b>'+c.withBeforeLog+'</b> + 备份还原 <b>'+c.withBeforeBackup+'</b>）' : '')+
