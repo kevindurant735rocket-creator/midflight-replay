@@ -1,0 +1,21 @@
+# The tool audits its own pull requests. If this stops working, so does the
+# pitch on the README — which is the point of running it in CI.
+name: self-replay
+on:
+  pull_request:
+    paths-ignore: ['**.md']
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          # A real session log, committed, so CI has something to audit.
+          # Swap in .agent-sessions/ + session: auto to audit your own runs.
+          session: fixtures/codex-mini.jsonl
+          comment: true
+          fail-on-parse-error: true

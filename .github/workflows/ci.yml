@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One job, one list. This file used to hand-write every command while the local gate
+# called npm scripts; two lists drift, and the drift is silent until a release ships
+# broken. `scripts/ci-checks.sh` is the only copy, and .githooks/pre-push runs the very
+# same file, so a green local push and a green CI run mean the same thing.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: the full check list
+        run: bash scripts/ci-checks.sh --ci
+
+  # The headline claim is "one file, no server, no CDN, no network request". That is only
+  # provable in a real browser, and only over the reports the tool actually ships, so it
+  # gets its own runner with the browser installed. Runs once to keep CI minutes sane.
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install chromium
+        run: npx playwright install --with-deps chromium
+      - name: browser + real-host + real-log gates
+        run: bash scripts/ci-checks.sh --ci
