@@ -349,7 +349,18 @@ function preview(s){
     case "turn_start": return "model="+(s.model||"?")+" effort="+(s.effort||"?");
     case "turn_end": return "duration="+(s.durationMs!=null?Math.round(s.durationMs/1000)+"s":"?")+" ttft="+(s.ttftMs!=null?Math.round(s.ttftMs/1000)+"s":"—");
     case "compaction": return "⇣ "+String(s.summary||"").slice(0,180);
-    case "note": return (s.level==="warn"?"⚠ ":s.level==="error"?"✕ ":"· ")+s.text;
+    // Claude Code writes one of these every time it snapshots a file before it
+    // edits it — its own undo bookkeeping, repeated verbatim. Untranslated, it
+    // was step #1 of a real 428-step session: the first thing a reader saw was
+    // an English identifier with no explanation, repeated 9 times. Named here so
+    // the row reads as what it is; the raw text stays in the detail pane, and
+    // the step is still counted, never dropped.
+    case "note": {
+      const mark = s.level==="warn"?"⚠ ":s.level==="error"?"✕ ":"· ";
+      return mark + (/^file-history-snapshot\b/.test(s.text)
+        ? "文件快照 · Claude Code 改文件前自己记的一笔，可忽略"
+        : s.text);
+    }
     case "file_event": return s.op+" "+s.path;
     default: return String(s.raw||"");
   }

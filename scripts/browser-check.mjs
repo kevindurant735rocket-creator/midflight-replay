@@ -82,6 +82,27 @@ for (const f of files) {
   );
   ok('header prints no bare placeholder', bareMeta.length === 0, bareMeta.join(' | ').slice(0, 160));
 
+  // ---- rows a reader has to be able to read ----
+  // Claude Code writes a file-history-snapshot line every time it snapshots a
+  // file before editing it. Untranslated it was step #1 of a real 428-step
+  // session: an English identifier, repeated, with nothing saying what it was.
+  const rawIds = await page.evaluate(() =>
+    [...document.querySelectorAll('.rows .row')].filter((e) => /file-history-snapshot/.test(e.innerText)).length,
+  );
+  ok('no row shows the raw English snapshot identifier', rawIds === 0, `rows=${rawIds}`);
+  const snapI = await page.evaluate(() => {
+    const r = [...document.querySelectorAll('.rows .row')].find((e) => /\u6587\u4ef6\u5feb\u7167/.test(e.innerText));
+    return r ? Number(r.getAttribute('data-i')) : -1;
+  });
+  if (snapI >= 0) {
+    await page.locator(`.rows .row[data-i="${snapI}"]`).click();
+    await page.waitForTimeout(120);
+    const det = await page.evaluate(() => document.querySelector('#detail')?.innerText || '');
+    ok('the named snapshot step still carries its raw line in the detail', /file-history-snapshot/.test(det), det.slice(0, 90));
+  } else {
+    ok('this sample has no snapshot bookkeeping row (detail check skipped)', true);
+  }
+
   // ---- keyboard scrub ----
   // A one-step report cannot advance: the windsurf adapter emits exactly one note
   // ("unreadable, and here is why"), so "ArrowRight advances" has no correct answer

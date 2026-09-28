@@ -145,8 +145,8 @@ CI — a sample that has drifted from the code is a bug, not a screenshot.
 
 | | what you get | open it |
 |---|---|---|
-| **Interactive replay** — a Codex session | scrub the timeline, click any step, read the diff | [open](docs/demo-codex.html) · 33 KB |
-| **Interactive replay** — a Claude Code session | the one with compaction sawtooth events | [open](docs/demo-claude.html) · 56 KB |
+| **Interactive replay** — a Codex session | scrub the timeline, click any step, read the diff | [open](docs/demo-codex.html) · 34 KB |
+| **Interactive replay** — a Claude Code session | the one with compaction sawtooth events | [open](docs/demo-claude.html) · 57 KB |
 | **PR digest** — GitHub-safe | what you actually paste into a review comment | [open](docs/demo-claude-paste.html) · 1 KB |
 
 The third one is the point of the project. GitHub strips `<script>` and
