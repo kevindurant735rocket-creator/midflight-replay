@@ -306,8 +306,13 @@ jobs:
 **它花多少：** 一次 `npm ci` 加一次 `tsc`，项目零运行时依赖。本机真实的
 109 MiB（114,325,714 字节）/ 30,736 行 / 14,905 步 Codex 会话解析耗时 **< 500ms**，产出 9,381 字节摘要。
 
-这个仓库在自己的 PR 上跑这个 action ——
-见 [`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml)。
+"这段 yaml 就是全部配置：抄进你自己的 `.github/workflows/`，它就会在你的 PR 上跑。
+
+本仓库**不**跑它自己，以前也没声称跑过——这里两个 workflow 文件（`ci.yml`、
+`self-replay.yml`）已经写完并验证通过，但**没有进到发布出去的目录树里**：这台机器推送用的
+token 缺 GitHub 的 `workflow` scope，GitHub 会直接拒绝这次推送。在它们落地之前，
+`bash scripts/acceptance.sh` 在本地跑同一套检查，`.githooks/pre-push` 会挡住任何跑不过的提交。
+少掉的那枚徽章长什么样，可以看 `scripts/ci-checks.sh`。
 
 ---
 

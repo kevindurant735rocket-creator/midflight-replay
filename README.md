@@ -5,7 +5,6 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/midflight-replay"><img src="https://img.shields.io/npm/v/midflight-replay.svg" alt="npm version"></a>
   <a href="#install"><img src="https://img.shields.io/badge/node-%3E%3D20-5FA04E" alt="node >= 20"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT"></a>
 </p>
@@ -33,9 +32,10 @@ npx github:kevindurant735rocket-creator/midflight-replay agents --probe
 
 Everything runs on your own machine. No network calls, no telemetry, no database, and the
 tool ships zero runtime dependencies &mdash; redaction of paths, keys and emails is on by
-default. <sub>Requires Node 20+. Once the package is on npm this becomes
-<code>npx midflight-replay</code>; until then the <code>github:</code> form above is the
-one that actually installs.</sub>
+default. <sub>Requires Node 20+. There is deliberately no <code>npm</code> badge here yet: the
+package is not published, and a badge pointing at a 404 is a worse first impression than
+no badge. Once it is, this becomes <code>npx midflight-replay</code> and the badge comes
+back with it.</sub>
 
 
 <p align="center">
@@ -403,8 +403,14 @@ repo, or set `dir:` to wherever yours live.
 machine's real 109 MiB (114,325,714 bytes) / 30,736-line / 14,906-step Codex session parses in **under
 500 ms** and produces a 9,381-byte digest.
 
-This repo runs the action on its own pull requests — see
-[`.github/workflows/self-replay.yml`](.github/workflows/self-replay.yml).
+That snippet is the whole setup: copy it into your own `.github/workflows/` and it runs
+on your pull requests. This repository does **not** run it on its own, and did not claim
+to until now — the two workflow files here (`ci.yml`, `self-replay.yml`) are complete and
+validated but stay out of the published tree, because the token this machine pushes with
+lacks GitHub's `workflow` scope and GitHub refuses that push outright. Until it lands,
+`bash scripts/acceptance.sh` runs the same checks locally and `.githooks/pre-push` refuses a
+commit that breaks them. You can see the shape of the missing badge in
+`scripts/ci-checks.sh`.
 
 ## Honest coverage
 

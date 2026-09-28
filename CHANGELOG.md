@@ -8,6 +8,20 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A link that only resolves on the author's machine is now a broken link.** The link
+  checker verified that referenced files exist, never that git ships them, and it only read
+  markdown `[](...)` links — so the entire first screen (all HTML) was unchecked. The README
+  spent a release promising this repo runs its action on its own pull requests, pointing at
+  `.github/workflows/self-replay.yml`, a file `.git/info/exclude` kept out of every published
+  tree. It now states the truth in both languages, and `scripts/link-check.mjs` fails on any
+  reference that exists on disk but not in a commit, plus every `href`/`src`/`srcset` and
+  in-page anchor that the markdown-only loop could not see. Three regression tests keep both
+  halves honest, including a negative case that must stay red.
+- **The `npm` badge is gone from the first screen.** The package is not published, so the
+  badge pointed at a 404 — a worse first impression than no badge, and the README already
+  said so in words. It comes back with the package.
+
+
 - **Dropping steps is now stated, not implied.** A 6,267-step session replayed with the
   default 3,000-step ceiling printed `3000/6267 步` and stopped. The numbers looked like a
   formatting detail, so a user opened the report, found half the conversation gone, and had
