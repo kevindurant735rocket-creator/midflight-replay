@@ -34,6 +34,14 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   (`.cursor` plus `.cursor/projects`), inflating session counts and bytes.
 - `parseSession`'s unknown-format fallback always picked the first adapter, because every
   adapter emits an `unknown` step. It now picks the one that classifies the most steps.
+- **Thirteen findings used to look like one finding.** A real 110 MB Codex session tripped
+  the loop detector 13 times, and every row read the same sentence — "同一个调用连续跑了
+  N 次，参数完全相同" — with the command itself parked in a tooltip nobody opens. The
+  headline now carries the call: `exec_command「sleep 12; cat log.txt」连续跑了 4 次`.
+  Codex hands `args` over as raw JSON *text* while Claude Code hands over an object, so
+  reading only the object form is what left every codex loop labelled with a JSON blob;
+  both shapes are parsed now. The panel also leads with the shape of the findings
+  ("死循环 13 · 上下文压力 1") so a reader sees where to look before reading rows.
 
 
 ## [0.1.1] - 2026-09-28
