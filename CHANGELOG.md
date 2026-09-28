@@ -25,6 +25,13 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A clean clone could not execute the binary it ships.** `tsc` writes `dist/cli.js` as 0644 and
+  nothing set the bit back, so on a fresh `npm ci && npm run build` every README command check died
+  with `EACCES`. This machine never saw it: the local build had been chmod'ed by hand once and
+  carried the bit from then on, which is exactly the failure the tarball gate exists to catch and
+  the one thing it cannot catch on the machine that built the tarball. The build sets the mode
+  now, every run.
+
 - **Step #1 of a real session was an unexplained English identifier.** Claude Code writes a
   `file-history-snapshot` line every time it snapshots a file before editing it; the report
   printed the host's field names verbatim, so the first row a reader met on a 428-step session

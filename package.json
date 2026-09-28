@@ -23,7 +23,7 @@
     "fixtures/claude-mini.jsonl"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/make-bin-executable.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepublishOnly": "npm run typecheck && npm test && npm run check:links && npm run build && npm run check:readme",
