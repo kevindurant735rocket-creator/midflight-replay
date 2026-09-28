@@ -85,10 +85,10 @@ function findLoops(steps: ReplayStep[]): Finding[] {
         kind: 'loop',
         severity: 1,
         firstStep: head,
-        headline: `the same call ran ${run.idx.length} times in a row with identical arguments`,
+        headline: `同一个调用连续跑了 ${run.idx.length} 次，参数完全相同`,
         evidence: [
-          `steps ${head}-${rest[rest.length - 1]}: ${run.fp.length > 160 ? `${run.fp.slice(0, 160)}…` : run.fp}`,
-          `${run.idx.length} consecutive calls, 0 arguments changed between the first and the last`,
+          `第 ${head + 1}-${rest[rest.length - 1] + 1} 步：${run.fp.length > 160 ? `${run.fp.slice(0, 160)}…` : run.fp}`,
+          `连续 ${run.idx.length} 次调用，从第一次到最后一次参数一个字都没改`,
         ],
       });
     }
@@ -128,9 +128,9 @@ function findRepeatedEdits(steps: ReplayStep[]): Finding[] {
       kind: 'repeated-edit',
       severity: 2,
       firstStep: idx[0],
-      headline: `${path} was edited ${idx.length} times`,
+      headline: `${path} 被改了 ${idx.length} 次`,
       evidence: [
-        `steps ${idx[0]}-${idx[idx.length - 1]}, ${pct(idx.length / steps.length)} of the session by step count`,
+        `第 ${idx[0] + 1}-${idx[idx.length - 1] + 1} 步，按步数算占整个会话的 ${pct(idx.length / steps.length)}`,
       ],
     });
   }
@@ -182,20 +182,20 @@ function findContextPressure(steps: ReplayStep[]): Finding[] {
   // lead and the ratio is marked as a floor whenever it passes 100%.
   const overWindow = peak >= 1;
   const headline = overWindow
-    ? `context hit ${peakTokens.toLocaleString('en-US')} tokens against a ${peakWindow.toLocaleString('en-US')}-token window`
-    : `context reached ${pct(peak)} of the window (${peakTokens.toLocaleString('en-US')} of ${peakWindow.toLocaleString('en-US')} tokens)`;
+    ? `上下文占用触及 ${peakTokens.toLocaleString('en-US')} token，而窗口只有 ${peakWindow.toLocaleString('en-US')} token`
+    : `上下文用到窗口的 ${pct(peak)}（${peakTokens.toLocaleString('en-US')} / ${peakWindow.toLocaleString('en-US')} token）`;
   const evidence = [
     overWindow
-      ? `the host reported input ABOVE its own reported window; treat the ratio as a floor, not a measurement`
-      : `peak ${pct(peak)} of the window`,
+      ? `宿主上报的输入量超过它自己上报的窗口；这个比例只能当下限看，不能当测量值`
+      : `峰值为窗口的 ${pct(peak)}`,
   ];
   if (over > 0) {
-    evidence.push(`${over} of ${usage.length} usage records at or above ${pct(NEAR_FULL_FRACTION)}`);
+    evidence.push(`${usage.length} 条用量记录里有 ${over} 条达到 ${pct(NEAR_FULL_FRACTION)} 以上`);
   }
   if (unreconciled > 0) {
-    evidence.push(`${unreconciled} records where input tokens exceeded the reported window`);
+    evidence.push(`${unreconciled} 条记录的输入 token 超过了上报的窗口`);
   }
-  if (compactions > 0) evidence.push(`${compactions} first-hand compaction events`);
+  if (compactions > 0) evidence.push(`${compactions} 次第一手压缩事件`);
   return [
     {
       kind: 'near-full-context',
@@ -223,6 +223,6 @@ export function renderPostmortem(findings: Finding[], sessionId: string): string
     for (const e of f.evidence) lines.push(`  - ${e}`);
     lines.push('');
   }
-  lines.push(`${findings.length} finding${findings.length === 1 ? '' : 's'}. Counts over logged steps only.`);
+  lines.push(`共 ${findings.length} 项发现。全部按日志里实际记录的步数统计。`);
   return `${lines.join('\n')}\n`;
 }

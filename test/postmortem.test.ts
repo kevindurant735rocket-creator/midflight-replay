@@ -44,9 +44,9 @@ describe('postmortem — loops', () => {
     const loops = postmortem(steps).filter((f) => f.kind === 'loop');
     expect(loops).toHaveLength(1);
     expect(loops[0].severity).toBe(1);
-    expect(loops[0].headline).toContain('4 times in a row');
+    expect(loops[0].headline).toContain('连续跑了 4 次');
     expect(loops[0].evidence.join(' ')).toContain('ps aux | grep x');
-    expect(loops[0].evidence.join(' ')).toContain('0 arguments changed');
+    expect(loops[0].evidence.join(' ')).toContain('参数一个字都没改');
   });
 
   it('a different call in between breaks the run', () => {
@@ -95,8 +95,8 @@ describe('postmortem — repeated edits', () => {
     for (let i = 0; i < 3; i += 1) steps.push(edit('/repo/src/b.ts'));
     const f = postmortem(steps).filter((x) => x.kind === 'repeated-edit');
     expect(f).toHaveLength(2);
-    expect(f[0].headline).toContain('3 times');
-    expect(f[0].evidence.join(' ')).toContain('% of the session');
+    expect(f[0].headline).toContain('被改了 3 次');
+    expect(f[0].evidence.join(' ')).toContain('占整个会话的');
   });
 
   it('reads file_event steps as edits, and never counts a delete as churn', () => {
@@ -123,7 +123,8 @@ describe('postmortem — context pressure', () => {
     const f = postmortem(steps);
     expect(f).toHaveLength(1);
     expect(f[0].kind).toBe('near-full-context');
-    expect(f[0].headline).toContain('90.0% of the window');
+    expect(f[0].headline).toContain('90.0%');
+    expect(f[0].headline).toContain('窗口');
     expect(f[0].headline).toContain('90,000');
     expect(NEAR_FULL_FRACTION).toBe(0.85);
   });
@@ -133,7 +134,7 @@ describe('postmortem — context pressure', () => {
     // input 90k of a 100k window is 90%. If cachedInput were added it would be
     // 178% and the finding would look like a lie.
     const f = postmortem([usage(90000, 88000, 100000)]);
-    expect(f[0].headline).toContain('90.0% of the window');
+    expect(f[0].headline).toContain('90.0%');
     expect(f[0].headline).not.toContain('178');
   });
 
@@ -143,14 +144,14 @@ describe('postmortem — context pressure', () => {
     expect(f[0].headline).toContain('322,441');
     expect(f[0].headline).toContain('243,200');
     expect(f[0].headline).not.toMatch(/\d+\.\d%/);
-    expect(f[0].evidence.join(' ')).toContain('floor');
+    expect(f[0].evidence.join(' ')).toContain('下限');
   });
 
   it('a compaction alone is enough to report, with its count', () => {
     seq = 0;
     const f = postmortem([usage(100, 0, 100000), compaction()]);
     expect(f).toHaveLength(1);
-    expect(f[0].evidence.join(' ')).toContain('1 first-hand compaction events');
+    expect(f[0].evidence.join(' ')).toContain('1 次第一手压缩事件');
   });
 
   it('ignores usage records with no window — it cannot compute a ratio', () => {
@@ -178,8 +179,8 @@ describe('postmortem — output', () => {
     expect(out.indexOf('[repeated-edit]')).toBeLessThan(out.indexOf('[near-full-context]'));
     // FOUR, not three: the three identical Edits are a loop in their own right,
     // and a file edited the same way three times in a row is genuinely both.
-    expect(out).toContain('4 findings');
-    expect(out).toContain('Counts over logged steps only');
+    expect(out).toContain('共 4 项发现');
+    expect(out).toContain('全部按日志里实际记录的步数统计');
   });
 });
 

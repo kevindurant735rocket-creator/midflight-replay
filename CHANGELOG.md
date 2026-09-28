@@ -36,6 +36,8 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   strip; the context-window field carries a `token` unit; and a compaction row
   no longer repeats its own label (`压缩丢弃 | 压缩丢弃 N 字符` → `压缩丢弃 | 丢弃
   N 字符`). The same three strings changed in the `--paste` digest.
+  `事后法证` (a forensic term) and `事后解剖` became `自动检查` in the title strip
+  and the findings panel, which had also disagreed with each other.
 
   Note on the de-AI gate: `deai-check.sh` only reads `.md/.txt/.html`. Run against
   the repo root it also ingests `.release-assets/*.html`, which embeds a real

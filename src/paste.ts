@@ -70,7 +70,7 @@ export function buildPaste(session: Session, opts: PasteOptions = {}): PasteResu
 
   /* --- section 1: header + coverage (never dropped: this is the honest part) --- */
   const head = [
-    `<div><b>midflight</b> · agent 会话回放（事后法证 · 零插桩）</div>`,
+    `<div><b>midflight</b> · agent 会话回放（自动检查 · 零插桩）</div>`,
     table(
       ['项', '值'],
       [

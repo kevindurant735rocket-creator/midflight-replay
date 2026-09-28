@@ -373,7 +373,7 @@ function header(){
   const metas=[["会话",m.sessionId],...(m.title?[["标题",m.title]]:[]),["host",m.agent],["模型",m.model||"—"],["effort",m.effort||"—"],
     ["版本",m.cliVersion||"—"],["分支",m.gitBranch||"—"],["上下文窗口",m.contextWindow?kb(m.contextWindow)+" token":"—"],
     ["来源",D.sourceLabel]];
-  let hh='<h1>midflight <small>agent 会话回放 · 事后法证</small></h1><div class="meta">';
+  let hh='<h1>midflight <small>agent 会话回放 · 自动检查</small></h1><div class="meta">';
   for(const [k,v] of metas) hh+='<span>'+esc(k)+' <b>'+esc(String(v))+'</b></span>';
   hh+='</div>';
   hh+='<div class="badges">'+
@@ -399,13 +399,13 @@ function header(){
     (c.missing>0 ? ' · 仍缺 <b>'+c.missing+'</b>' : '')+'</div></div>';
   if(D.postmortem&&D.postmortem.length){
     const PMK={loop:'死循环','repeated-edit':'反复改同一处','near-full-context':'上下文压力'};
-    hh+='<div class="pm"><b>事后解剖</b> · '+D.postmortem.length+' 项发现<div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
+    hh+='<div class="pm"><b>自动检查</b> · '+D.postmortem.length+' 项发现<div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
     for(const f of D.postmortem){
       hh+='<div class="pm-row" data-i="'+f.firstStep+'" title="'+esc(f.evidence.join(' / '))+'"><span class="tag">'+esc(PMK[f.kind]||f.kind)+'</span><span>'+esc(f.headline)+'</span><span class="pm-step">第 '+(f.firstStep+1)+' 步</span></div>';
     }
     hh+='</div>';
   } else {
-    hh+='<div class="pm"><b>事后解剖</b> · 未发现<div class="pm-clean">日志里没有同参连调、没有反复改同一处、没有上下文压力。</div></div>';
+    hh+='<div class="pm"><b>自动检查</b> · 未发现<div class="pm-clean">日志里没有同参连调、没有反复改同一处、没有上下文压力。</div></div>';
   }
   if(D.thin.banner) hh+='<div class="banner">'+esc(D.thin.banner)+'</div>';
   if(D.parseErrorCount) hh+='<div class="banner">部分行无法解析，已按可读部分渲染：'+D.parseErrorSample.map(p=>"行 "+p.line).join("、")+
