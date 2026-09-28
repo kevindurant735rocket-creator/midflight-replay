@@ -39,9 +39,27 @@ GOT=$("$BIN" --version)
 [ "$GOT" = "$EXPECT" ] || fail "--version printed '$GOT', expected '$EXPECT'"
 echo "  installed binary reports $GOT"
 
-"$BIN" doctor fixtures/claude-mini.jsonl >/dev/null 2>&1 || fail "doctor exited non-zero on a real fixture"
-"$BIN" stats fixtures/codex-mini.jsonl >/dev/null 2>&1 || fail "stats exited non-zero on a real fixture"
-"$BIN" replay fixtures/claude-mini.jsonl --out "$T/r.html" >/dev/null 2>&1 || fail "replay exited non-zero"
+# Absolute paths, resolved inside the installed package. The previous version passed
+# relative ones, so `doctor fixtures/claude-mini.jsonl` read the file out of *this
+# checkout* and the gate went green while the published package shipped no fixtures at
+# all. A gate that cannot see the thing it is gating is decoration.
+PKG="$T/prefix/lib/node_modules/$NAME"
+[ -d "$PKG" ] || PKG=$(dirname "$(dirname "$BIN")")
+CLAUDE_FIX="$PKG/fixtures/claude-mini.jsonl"
+CODEX_FIX="$PKG/fixtures/codex-mini.jsonl"
+[ -f "$CLAUDE_FIX" ] || fail "fixtures/claude-mini.jsonl is not in the tarball"
+[ -f "$CODEX_FIX" ] || fail "fixtures/codex-mini.jsonl is not in the tarball"
+
+# every entry package.json#files promises must really be in the tarball
+for want in $(node -p "require('./package.json').files.filter(f=>!f.endsWith('/')).join(' ')" 2>/dev/null); do
+  case "$want" in
+    *.md|*.jsonl|*.pb) tar tzf "$T/$TGZ" | grep -q "^package/$want$" || fail "package.json#files lists $want but the tarball does not contain it" ;;
+  esac
+done
+
+"$BIN" doctor "$CLAUDE_FIX" >/dev/null 2>&1 || fail "doctor exited non-zero on a shipped fixture"
+"$BIN" stats "$CODEX_FIX" >/dev/null 2>&1 || fail "stats exited non-zero on a shipped fixture"
+"$BIN" replay "$CLAUDE_FIX" --out "$T/r.html" >/dev/null 2>&1 || fail "replay exited non-zero"
 [ -s "$T/r.html" ] || fail "replay wrote an empty report"
 grep -q 'const D = {' "$T/r.html" || fail "replay report has no embedded payload"
 
@@ -49,7 +67,7 @@ grep -q 'const D = {' "$T/r.html" || fail "replay report has no embedded payload
 "$BIN" revert "$T/r.html" --list >/dev/null 2>&1
 RC=$?
 [ "$RC" = 0 ] || [ "$RC" = 1 ] || fail "revert --list exited $RC (expected 0 or 1)"
-"$BIN" revert fixtures/claude-mini.jsonl --list >/dev/null 2>&1
+"$BIN" revert "$CLAUDE_FIX" --list >/dev/null 2>&1
 [ $? = 2 ] || fail "revert accepted a file that is not a report (should exit 2)"
 
 # The command list is derived from the shipped dispatch table, never hand-kept.
@@ -70,8 +88,8 @@ for c in $CMDS; do
     revert|redact) continue ;;   # both covered explicitly above / need stdin
   esac
   case "$c" in
-    doctor|postmortem) "$BIN" "$c" fixtures/claude-mini.jsonl >/dev/null 2>&1 || fail "$c exited non-zero" ;;
-    stats)   "$BIN" "$c" fixtures/codex-mini.jsonl  >/dev/null 2>&1 || fail "$c exited non-zero" ;;
+    doctor|postmortem) "$BIN" "$c" "$CLAUDE_FIX" >/dev/null 2>&1 || fail "$c exited non-zero" ;;
+    stats)   "$BIN" "$c" "$CODEX_FIX"  >/dev/null 2>&1 || fail "$c exited non-zero" ;;
     replay)  continue ;;          # covered above
     install) "$BIN" "$c" --dry-run >/dev/null 2>&1 || fail "$c --dry-run exited non-zero" ;;
     *)       HOME="$T/fakehome" "$BIN" "$c" >/dev/null 2>&1 || fail "$c exited non-zero" ;;

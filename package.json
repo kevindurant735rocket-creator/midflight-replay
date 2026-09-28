@@ -18,7 +18,9 @@
     "fixtures/cursor-mini.jsonl",
     "fixtures/windsurf-cascade-empty.pb",
     "fixtures/windsurf-cascade-mini.pb",
-    "fixtures/windsurf-cascade-plaintext.pb"
+    "fixtures/windsurf-cascade-plaintext.pb",
+    "fixtures/codex-mini.jsonl",
+    "fixtures/claude-mini.jsonl"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
