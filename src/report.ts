@@ -129,7 +129,8 @@ h1 small{color:var(--dim);font-weight:400;margin-left:8px}
 .pm-row:hover{background:#161b22}
 .pm-row .tag{flex:none}
 .pm-row .pm-step{flex:none;margin-left:auto;color:var(--dim);white-space:nowrap}
-.pm .why{color:var(--dim);font-size:12px;margin-top:6px}
+.pm .pm-shape{color:var(--fg);font-size:12px;margin-top:6px;letter-spacing:.02em}
+.pm .why{color:var(--dim);font-size:12px;margin-top:4px}
 .pm-clean{color:var(--dim);font-size:12px}
 main{display:grid;grid-template-columns:1fr 1fr;gap:0;height:calc(100vh - 150px)}
 @media(max-width:900px){main{grid-template-columns:1fr;height:auto}}
@@ -426,7 +427,13 @@ function header(){
     (c.missing>0 ? ' · 仍缺 <b>'+c.missing+'</b>' : '')+'</div></div>';
   if(D.postmortem&&D.postmortem.length){
     const PMK={loop:'死循环','repeated-edit':'反复改同一处','near-full-context':'上下文压力'};
-    hh+='<div class="pm"><b>自动检查</b> · '+D.postmortem.length+' 项发现<div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
+    // A long session can produce a dozen findings of one kind. Printing a bare
+    // count leaves the reader to count rows; printing the shape first lets them
+    // see "12 loops, 1 file churn" and decide where to look.
+    const tally={};
+    for(const f of D.postmortem) tally[f.kind]=(tally[f.kind]||0)+1;
+    const shape=Object.keys(PMK).filter(k=>tally[k]).map(k=>PMK[k]+' '+tally[k]).join(' · ');
+    hh+='<div class="pm"><b>自动检查</b> · '+D.postmortem.length+' 项发现<div class="pm-shape">'+esc(shape)+'</div><div class="why">同一调用连续同参、同一文件被反复改、上下文逼近窗口上限。全部由日志计数得出，不是模型判断。</div>';
     for(const f of D.postmortem){
       hh+='<div class="pm-row" data-i="'+f.firstStep+'" title="'+esc(f.evidence.join(' / '))+'"><span class="tag">'+esc(PMK[f.kind]||f.kind)+'</span><span>'+esc(f.headline)+'</span><span class="pm-step">第 '+(f.firstStep+1)+' 步</span></div>';
     }

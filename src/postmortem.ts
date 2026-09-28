@@ -60,6 +60,49 @@ function callFingerprint(step: ReplayStep): string | null {
   return `${step.name} ${raw}`;
 }
 
+/**
+ * What the reader needs to see in the finding list itself: WHICH call repeated.
+ * A real session looped 13 different commands, and a panel that printed
+ * "同一个调用连续跑了 3 次" thirteen times told the reader nothing they could
+ * act on — the only copy of the command sat in a tooltip. So the headline
+ * carries a short label: the tool name plus the single most identifying
+ * argument, squeezed onto one line and clipped.
+ */
+function callLabel(step: ReplayStep): string {
+  if (step.kind !== 'tool_call') return '';
+  // Codex hands `args` over as the raw JSON *text*; Claude Code hands over an
+  // object. Reading only the object form is how every codex loop came out
+  // labelled `exec_command「{"cmd":"…"}」` — a reader has to parse JSON to learn
+  // which command repeated, which is the one job this label exists to avoid.
+  let a: Record<string, unknown> | null = null;
+  if (step.args && typeof step.args === 'object') {
+    a = step.args as Record<string, unknown>;
+  } else if (typeof step.args === 'string') {
+    try {
+      const parsed = JSON.parse(step.args);
+      if (parsed && typeof parsed === 'object') a = parsed as Record<string, unknown>;
+    } catch {
+      a = null;
+    }
+  }
+  const keys = ['cmd', 'command', 'file_path', 'filePath', 'path', 'notebook_path', 'pattern', 'query', 'url'];
+  let detail = '';
+  if (a) {
+    for (const k of keys) {
+      const v = a[k];
+      if (typeof v === 'string' && v.trim()) {
+        detail = v;
+        break;
+      }
+    }
+  }
+  if (!detail) detail = step.rawArgs;
+  // one line, no runs of whitespace, no giant JSON blobs
+  const flat = detail.replace(/\s+/g, ' ').trim();
+  const cut = flat.length > 48 ? `${flat.slice(0, 48)}…` : flat;
+  return cut ? `${step.name}「${cut}」` : step.name;
+}
+
 function pct(n: number): string {
   return `${(n * 100).toFixed(1)}%`;
 }
@@ -77,7 +120,7 @@ function findLoops(steps: ReplayStep[]): Finding[] {
     .map((s, i) => ({ step: s, i }))
     .filter((x): x is { step: ReplayStep & { kind: 'tool_call' }; i: number } => x.step.kind === 'tool_call');
 
-  let run: { fp: string; idx: number[] } | null = null;
+  let run: { fp: string; idx: number[]; first: ReplayStep } | null = null;
   const flush = (): void => {
     if (run && run.idx.length >= LOOP_RUN_MIN) {
       const [head, ...rest] = run.idx;
@@ -85,7 +128,7 @@ function findLoops(steps: ReplayStep[]): Finding[] {
         kind: 'loop',
         severity: 1,
         firstStep: head,
-        headline: `同一个调用连续跑了 ${run.idx.length} 次，参数完全相同`,
+        headline: `${callLabel(run.first)} 连续跑了 ${run.idx.length} 次，参数完全相同`,
         evidence: [
           `第 ${head + 1}-${rest[rest.length - 1] + 1} 步：${run.fp.length > 160 ? `${run.fp.slice(0, 160)}…` : run.fp}`,
           `连续 ${run.idx.length} 次调用，从第一次到最后一次参数一个字都没改`,
@@ -100,7 +143,7 @@ function findLoops(steps: ReplayStep[]): Finding[] {
     if (run && run.fp === fp) run.idx.push(i);
     else {
       flush();
-      run = { fp, idx: [i] };
+      run = { fp, idx: [i], first: step };
     }
   }
   flush();

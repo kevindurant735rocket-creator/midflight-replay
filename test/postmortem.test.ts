@@ -49,6 +49,39 @@ describe('postmortem — loops', () => {
     expect(loops[0].evidence.join(' ')).toContain('参数一个字都没改');
   });
 
+  it('the headline names the call, so a dozen findings are not a dozen identical rows', () => {
+    seq = 0;
+    const mk = (raw: string): ReplayStep => ({
+      kind: 'tool_call', ts: seq++, callId: `c${seq}`, name: 'exec_command',
+      args: { cmd: JSON.parse(raw).cmd }, rawArgs: raw,
+    } as ReplayStep);
+    const steps = [
+      ...Array.from({ length: 3 }, () => mk('{"cmd":"git status"}')),
+      ...Array.from({ length: 4 }, () => mk('{"cmd":"npm test"}')),
+    ];
+    const loops = postmortem(steps).filter((f) => f.kind === 'loop');
+    expect(loops).toHaveLength(2);
+    // The panel used to print "同一个调用连续跑了 N 次" for both, which told a
+    // reader nothing. The command has to be in the row itself.
+    expect(loops[0].headline).toContain('git status');
+    expect(loops[1].headline).toContain('npm test');
+    expect(loops[0].headline).not.toBe(loops[1].headline);
+  });
+
+  it('reads the command out of string args, the way codex hands them over', () => {
+    seq = 0;
+    const mk = (): ReplayStep => ({
+      kind: 'tool_call', ts: seq++, callId: `c${seq}`, name: 'exec_command',
+      args: '{"cmd":"sleep 12; cat log.txt"}', rawArgs: '{"cmd":"sleep 12; cat log.txt"}',
+    } as unknown as ReplayStep);
+    const loops = postmortem(Array.from({ length: 3 }, mk)).filter((f) => f.kind === 'loop');
+    expect(loops).toHaveLength(1);
+    // String args are codex's normal shape; reading only objects labelled every
+    // codex loop with raw JSON the reader then had to parse.
+    expect(loops[0].headline).toContain('sleep 12; cat log.txt');
+    expect(loops[0].headline).not.toContain('{"cmd"');
+  });
+
   it('a different call in between breaks the run', () => {
     seq = 0;
     const steps = [
