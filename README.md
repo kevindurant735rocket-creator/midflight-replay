@@ -52,10 +52,11 @@
 ## Run it on your own session &mdash; one command, nothing to clone
 
 ```bash
-npx github:kevindurant735rocket-creator/midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
+npx github:kevindurant735rocket-creator/midflight-replay replay --out replay.html
 ```
 
-That reads the most recent Codex session off this machine and writes one self-contained
+No file argument: it finds the most recent session this machine actually wrote, tells you
+which one it picked, and writes one self-contained
 `replay.html` you can open or attach to a pull request. On Claude Code, point it at
 `~/.claude/projects/*/*.jsonl` instead. Not sure which logs you have? Ask:
 
@@ -317,11 +318,12 @@ anything, and it never touches your workspace.
 | Claude Code | `~/.claude/projects/<mangled-cwd>/` | `<session-uuid>.jsonl` |
 
 ```bash
-# newest Codex session
-npx midflight-replay replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
+# newest session of any supported agent, found for you
+npx midflight-replay replay --out replay.html
 
-# newest Claude Code session
-npx midflight-replay replay "$(ls -t ~/.claude/projects/*/*.jsonl | head -1)" --out replay.html
+# or point it anywhere: a file, or the directory your agent writes into
+npx midflight-replay replay ~/.codex/sessions --out replay.html
+npx midflight-replay replay ~/.claude/projects --out replay.html
 ```
 
 Format is auto-detected from the first intact record, never from the file name, and

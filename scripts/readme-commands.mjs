@@ -213,6 +213,24 @@ function rewrite(line, tmp) {
     if (!/\s--dry-run(\s|$)/.test(cmd)) cmd += ' --dry-run';
   }
 
+  // A session command with no file argument now finds the newest log itself. On a
+  // box that never ran an agent it exits 2 with a plain explanation, which is the
+  // machine and not a broken README line — the same rule the glob below follows.
+  {
+    const toks = cmd.split(/\s+/).filter(Boolean);
+    const i = toks.findIndex((t) => /^(replay|doctor|stats|postmortem)$/.test(t));
+    if (i !== -1) {
+      const VALUE_FLAGS = new Set(['--out', '--max-steps']);
+      let hasFile = false;
+      for (let k = i + 1; k < toks.length; k++) {
+        const t = toks[k];
+        if (t.startsWith('-')) { if (VALUE_FLAGS.has(t)) k++; continue; }
+        hasFile = true; break;
+      }
+      if (!hasFile && !ANY_HOST_STORE) return SKIP;
+    }
+  }
+
   // `$(ls -t <glob> | head -1)` — keep the documented shape, feed a real path
   cmd = cmd.replace(/\$\(ls -t\s+(\S+)\s*\|\s*head\s+-?1\)/g, (_, glob) => {
     const hit = expandGlob(glob.replace(/^~(?=\/)/, homedir()));

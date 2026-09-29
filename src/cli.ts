@@ -17,17 +17,18 @@ import { installSkill, presentTargets, TARGETS, SKILL_NAME, type InstallTarget }
 
 const USAGE = `midflight — 把 AI 智能体跑完的一次会话，变成一个能来回拖动的网页
 
-先试这一条（读你机器上最近的一次 Codex 会话，生成 replay.html）
-  midflight replay "$(ls -t ~/.codex/sessions/*/*/*/*.jsonl | head -1)" --out replay.html
+先试这一条（不给文件，它自己找你机器上最近的一次会话，生成 replay.html）
+  midflight replay --out replay.html
 
-  不确定自己有哪些会话日志？先问一句
+  想知道它挑的是哪一次，或者这台机器上哪些智能体写过日志
   midflight agents --probe
 
 用法
-  midflight replay <会话文件>            生成一个自带全部内容的网页，可以直接拖动回看
-  midflight doctor <会话文件>            检查这个日志能不能读，坏在哪一行（有问题时退出码 1）
-  midflight stats  <会话文件>            只数一数：这个会话一共多少步、都是些什么步骤
-  midflight postmortem <会话文件>        找问题：反复改同一个文件、绕圈、上下文快满了
+  midflight replay [会话文件或目录]       生成一个自带全部内容的网页，可以直接拖动回看
+                                       不给文件就自动挑最近的一次会话
+  midflight doctor [会话文件或目录]       检查这个日志能不能读，坏在哪一行（有问题时退出码 1）
+  midflight stats  [会话文件或目录]      只数一数：这个会话一共多少步、都是些什么步骤
+  midflight postmortem [会话文件或目录]  找问题：反复改同一个文件、绕圈、上下文快满了
   midflight revert  <report.html> --list  看看这个报告里哪几步可以撤回
   midflight revert  <report.html> --step <n>  打印出反向补丁；永远不碰你的工作区
   midflight agents [--json] [--probe]    本机装了哪些智能体、哪些日志读得动
@@ -202,13 +203,64 @@ function warningText(w: string): string {
   return w;
 }
 
+type SessionArg = { path: string; source: 'given' | 'discovered'; agent?: string };
+
+/**
+ * A real user does not know where their log lives, and no help screen teaches a
+ * four-level glob by heart. When the argument is missing, empty, or a directory,
+ * pick the newest session this machine actually has and say out loud which one.
+ * An explicit file is still honoured exactly as before, so nothing that works
+ * today changes behaviour.
+ */
+async function resolveSession(arg: string | undefined): Promise<SessionArg | null> {
+  const a = (arg ?? '').trim();
+  if (a) {
+    try {
+      if (existsSync(a) && statSync(a).isFile()) return { path: a, source: 'given' };
+    } catch {
+      /* unreadable path: fall through and look for a session instead of dying */
+    }
+  }
+  const home = process.env.HOME ?? '';
+  if (!home) return null;
+  let reports: Awaited<ReturnType<typeof scanAgents>>;
+  try {
+    reports = await scanAgents({ homeDir: home });
+  } catch {
+    return null;
+  }
+  let best: { file: string; mtime: number; label: string } | null = null;
+  for (const r of reports) {
+    if (!r.newest) continue;
+    if (!best || r.newestMtime > best.mtime) best = { file: r.newest, mtime: r.newestMtime, label: r.label };
+  }
+  return best ? { path: best.file, source: 'discovered', agent: best.label } : null;
+}
+
+/** One line naming the session we picked, so the user can see what they got. */
+function noteDiscovered(s: SessionArg): void {
+  if (s.source !== 'discovered') return;
+  console.error(`没给文件，用你这台机器上最近的一次会话：${s.agent}\n  ${s.path}\n`);
+}
+
+function noSessionFound(json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify({ ok: false, error: 'no session log found on this machine', hint: 'run `midflight agents --probe` to see which agents wrote logs' }, null, 2));
+    return;
+  }
+  console.error(`没找到能读的会话日志。\n`);
+  console.error(`  先看这台机器上哪些智能体写过日志：\n    midflight agents --probe\n`);
+  console.error(`  或者直接把日志文件给它：\n    midflight replay /path/to/session.jsonl\n`);
+}
+
 async function cmdDoctor(path: string, json: boolean): Promise<number> {
-  if (!exists(path)) {
-    const msg = `not a file: ${path}`;
-    if (json) console.log(JSON.stringify({ ok: false, error: msg }, null, 2));
-    else console.error(`error: ${msg}`);
+  const arg = await resolveSession(path);
+  if (!arg) {
+    noSessionFound(json);
     return 2;
   }
+  if (!json) noteDiscovered(arg);
+  path = arg.path;
   const t0 = Date.now();
   const session = await parseSession(path, { homeDir: process.env.HOME });
   const lines = countLines(path);
@@ -286,10 +338,13 @@ async function cmdDoctor(path: string, json: boolean): Promise<number> {
 
 function cmdStats(path: string, json: boolean): Promise<number> {
   return (async () => {
-    if (!exists(path)) {
-      console.error(`error: not a file: ${path}`);
+    const arg = await resolveSession(path);
+    if (!arg) {
+      noSessionFound(json);
       return 2;
     }
+    if (!json) noteDiscovered(arg);
+    path = arg.path;
     const t0 = Date.now();
     const session = await parseSession(path, { homeDir: process.env.HOME });
     const st = statsOf(session, countLines(path), Date.now() - t0);
@@ -306,10 +361,13 @@ function cmdStats(path: string, json: boolean): Promise<number> {
  */
 function cmdPostmortem(path: string, json: boolean): Promise<number> {
   return (async () => {
-    if (!exists(path)) {
-      console.error(`error: not a file: ${path}`);
+    const arg = await resolveSession(path);
+    if (!arg) {
+      noSessionFound(json);
       return 2;
     }
+    if (!json) noteDiscovered(arg);
+    path = arg.path;
     const session = await parseSession(path, { homeDir: process.env.HOME });
     const findings = postmortem(session.steps);
     if (json) {
@@ -337,10 +395,13 @@ const numFlag = (argv: string[], name: string): number | undefined => {
 };
 
 async function cmdReplay(path: string, argv: string[]): Promise<number> {
-  if (!exists(path)) {
-    console.error(`error: not a file: ${path}`);
+  const arg = await resolveSession(path);
+  if (!arg) {
+    noSessionFound(false);
     return 2;
   }
+  noteDiscovered(arg);
+  path = arg.path;
   const t0 = Date.now();
   const session = await parseSession(path, {
     homeDir: process.env.HOME,
@@ -532,7 +593,20 @@ async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const json = argv.includes('--json');
-  const rest = argv.slice(1).filter((a) => !a.startsWith('--'));
+  // `--out replay.html` puts a path in argv that is not a session file. Filtering
+  // only the `--flag` tokens left that path in `rest`, so `midflight replay --out x`
+  // read its own output back as a session and failed on line 3 of its own HTML.
+  // Skip the value of every flag that takes one; `--out=x` carries no separate value.
+  const VALUE_FLAGS = new Set(['--out', '--max-steps', '--per-step-chars', '--step']);
+  const rest: string[] = [];
+  for (let i = 1; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith('--')) {
+      if (VALUE_FLAGS.has(a)) i++;
+      continue;
+    }
+    rest.push(a);
+  }
   if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
     // Read from the package the tarball actually shipped, so the number can
     // never drift from what npm reports. Never fatal if the layout changes.
@@ -547,13 +621,8 @@ async function main(): Promise<number> {
     switch (cmd) {
       case 'replay':
         return await cmdReplay(rest[0] ?? '', argv);
-      case 'doctor': {
-        if (!rest[0]) {
-          console.error('error: doctor needs a session file');
-          return 2;
-        }
-        return await cmdDoctor(rest[0], json);
-      }
+      case 'doctor':
+        return await cmdDoctor(rest[0] ?? '', json);
       case 'stats':
         return await cmdStats(rest[0] ?? '', json);
       case 'agents':
