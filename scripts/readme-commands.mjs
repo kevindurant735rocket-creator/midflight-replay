@@ -228,6 +228,18 @@ function rewrite(line, tmp) {
         hasFile = true; break;
       }
       if (!hasFile && !ANY_HOST_STORE) return SKIP;
+      // A documented store directory that this machine does not have
+      // (`replay ~/.claude/projects`) is the same situation one level down: the
+      // path is what a reader with that agent would type, and its absence here
+      // says nothing about the README. Found the path, so check what it is.
+      if (hasFile) {
+        const arg = toks.slice(i + 1).find((t) => !t.startsWith('-') && !VALUE_FLAGS.has(t));
+        const m = arg && /^~\/([^/]+)/.exec(arg);
+        // m[1] already carries the dot ("~/.codex" -> ".codex").
+        if (m && HOST_STORES.includes(m[1]) && !existsSync(join(homedir(), m[1], arg.split('/').slice(2).join('/')))) {
+          if (!ANY_HOST_STORE) return SKIP;
+        }
+      }
     }
   }
 
